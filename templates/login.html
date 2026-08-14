@@ -36,11 +36,11 @@
     <!-- 3. ช่องใส่รหัส PIN 4 ตัวท้าย -->
     <label>3. รหัสผ่าน (เลข 4 ตัวท้ายรหัสนักศึกษา):</label>
     <div class="pin-box-container">
-        <input type="password" maxlength="1" class="pin-box" id="pin1" onkeyup="moveFocus(this, 'pin2')">
-        <input type="password" maxlength="1" class="pin-box" id="pin2" onkeyup="moveFocus(this, 'pin3')">
-        <input type="password" maxlength="1" class="pin-box" id="pin3" onkeyup="moveFocus(this, 'pin4')">
-        <input type="password" maxlength="1" class="pin-box" id="pin4" onkeyup="moveFocus(this, null)">
-    </div>
+    <input type="password" maxlength="1" class="pin-box" id="pin1" oninput="moveFocus(this, 'pin2')">
+    <input type="password" maxlength="1" class="pin-box" id="pin2" oninput="moveFocus(this, 'pin3')" onkeydown="checkBackspace(event, 'pin1')">
+    <input type="password" maxlength="1" class="pin-box" id="pin3" oninput="moveFocus(this, 'pin4')" onkeydown="checkBackspace(event, 'pin2')">
+    <input type="password" maxlength="1" class="pin-box" id="pin4" oninput="moveFocus(this, null)" onkeydown="checkBackspace(event, 'pin3')">
+</div>
 
     <button onclick="submitLogin()">เข้าสู่ระบบ</button>
 </div>
@@ -49,7 +49,11 @@
 <script>
     // 1. ดึงข้อมูลนักเรียนทั้งหมดที่ Backend โหลดมารอไว้แล้วมาเก็บใส่ตัวแปร JavaScript
     const allStudentsData = {{ all_students | tojson }};
-
+    function checkBackspace(event, prevId) {
+    if (event.key === "Backspace" && event.target.value === "") {
+        document.getElementById(prevId).focus();
+    }
+}
     // 2. ฟังก์ชันกรองรายชื่อนักเรียนแบบเร็วทันใจ (ไม่ต้องรอ fetch อีกต่อไป)
     function loadStudentsByClass() {
         const classSelect = document.getElementById('classSelect');
