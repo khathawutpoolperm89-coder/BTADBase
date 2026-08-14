@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบนักเรียน - Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #007bff; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; text-decoration: none; }
+        
+        /* Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 5px; display: inline-block; }
+        
+        /* ตาราง */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        
+        /* กล่องคาบเรียนต่อไป */
+        .highlight-box { background: #e9f5ff; border-left: 5px solid #007bff; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .highlight-box h4 { margin: 0 0 5px 0; color: #0056b3; }
+        
+        .badge { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- แถบด้านบน -->
+    <div class="header">
+        <div>
+            <h2 style="margin: 0;">สวัสดี, {{ data.name }}</h2>
+            <p style="margin: 5px 0 0 0;">ห้อง: {{ data.room }}</p>
+        </div>
+        <a href="/logout" class="logout-btn">ออกจากระบบ</a>
+    </div>
+
+    <!-- ไฮไลท์คาบเรียนต่อไป -->
+    <div class="highlight-box">
+        <h4>⚡ คาบเรียนต่อไปของคุณ:</h4>
+        <p style="margin: 0; font-size: 18px;">
+            <strong>{{ data.next_class.subject }}</strong> <br>
+            เวลา: {{ data.next_class.time }} | ห้อง: {{ data.next_class.room }}
+        </p>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- ฝั่งซ้าย: ตารางเรียนวันนี้ -->
+        <div class="card">
+            <h3>📅 ตารางเรียนวันนี้</h3>
+            <table>
+                <tr>
+                    <th>คาบที่</th>
+                    <th>เวลา</th>
+                    <th>วิชา</th>
+                </tr>
+                {% for item in data.today_schedule %}
+                <tr>
+                    <td>{{ item.period }}</td>
+                    <td>{{ item.time }}</td>
+                    <td>{{ item.subject }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- ฝั่งขวา: งานค้าง และ เกรด -->
+        <div>
+            <div class="card" style="margin-bottom: 20px;">
+                <h3>📝 งานค้างส่ง</h3>
+                <ul style="padding-left: 20px; margin-top: 10px;">
+                    {% for hw in data.assignments %}
+                        <li style="margin-bottom: 10px;">
+                            {{ hw.task }} <br>
+                            <small style="color: gray;">กำหนดส่ง: {{ hw.due }}</small>
+                            <span class="badge">{{ hw.status }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>📊 ผลการเรียน (เกรด)</h3>
+                <table>
+                    <tr>
+                        <th>วิชา</th>
+                        <th>เกรด</th>
+                    </tr>
+                    {% for g in data.grades %}
+                    <tr>
+                        <td style="text-align: left;">{{ g.subject }}</td>
+                        <td><strong>{{ g.grade }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
