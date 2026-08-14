@@ -126,7 +126,13 @@
 
 <script>
     const allStudentsData = {{ all_students | tojson }};
-
+function focusPinBox() {
+    const studentSelect = document.getElementById('studentSelect');
+    // ถ้ามีการเลือกชื่อจริง (ไม่ใช่ค่าว่าง) ให้ย้าย Focus ไปช่อง pin1 ทันที
+    if (studentSelect.value !== "") {
+        document.getElementById('pin1').focus();
+    }
+}
     function loadStudentsByClass() {
         const classSelect = document.getElementById('classSelect');
         const studentSelect = document.getElementById('studentSelect');
