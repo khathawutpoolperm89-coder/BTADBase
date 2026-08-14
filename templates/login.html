@@ -83,10 +83,23 @@
     }
 
     function moveFocus(current, nextId) {
-        if (current.value.length >= 1 && nextId) {
+    // ถ้าพิมพ์ตัวเลขแล้ว ให้ย้าย Focus ไปช่องถัดไป
+    if (current.value.length >= 1) {
+        if (nextId) {
             document.getElementById(nextId).focus();
+        } else {
+            // ถ้าเป็นช่องสุดท้าย (nextId เป็น null) และกรอกรหัสครบ 4 ตัวแล้ว ให้กด Auto Submit ทันที!
+            const p1 = document.getElementById('pin1').value;
+            const p2 = document.getElementById('pin2').value;
+            const p3 = document.getElementById('pin3').value;
+            const p4 = document.getElementById('pin4').value;
+
+            if (p1 && p2 && p3 && p4) {
+                submitLogin();
+            }
         }
     }
+}
 
     function submitLogin() {
         const studentName = document.getElementById('studentSelect').value;
