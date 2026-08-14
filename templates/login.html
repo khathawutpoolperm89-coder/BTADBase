@@ -105,10 +105,10 @@
     </select>
 
     <!-- 2. Dropdown เลือกชื่อ-นามสกุล -->
-    <label for="studentSelect">2. เลือกชื่อ-นามสกุล:</label>
-    <select id="studentSelect" disabled>
-        <option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>
-    </select>
+<label for="studentSelect">2. เลือกชื่อ-นามสกุล:</label>
+<select id="studentSelect" onchange="focusPinBox()" disabled>
+    <option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>
+</select>
 
     <!-- 3. ช่องใส่รหัส PIN 4 ตัวท้าย -->
     <label>3. รหัสผ่าน (เลข 4 ตัวท้ายรหัสนักศึกษา):</label>
