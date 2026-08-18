@@ -108,6 +108,9 @@
 
 <script>
     const allStudents = {{ all_students | tojson }};
+    
+    // 🟢 ใส่ Web App URL ของ Google Apps Script ที่ได้จากการ Deploy
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec'; 
 
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('dateSelect').valueAsDate = new Date();
@@ -121,10 +124,17 @@
 
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังดึงข้อมูลจาก Google Sheets...</td></tr>';
 
-  fetch(`/api/get_report_data?date=${selectedDate}&class=${selectedClass}`)
+  // 🟢 ยิงไปที่ Flask API (ตามที่มีใน app.py)
+  fetch(`/get_attendance_report?date=${selectedDate}&class=${encodeURIComponent(selectedClass)}`)
     .then(res => res.json())
-    .then(res => {
-      const records = res.data || [];
+    .then(response => {
+      // 🟢 ดึงข้อมูลจาก response.data 
+      let records = (response && response.data) ? response.data : [];
+
+      if (!Array.isArray(records)) {
+        records = [];
+      }
+
       tbody.innerHTML = '';
 
       if (records.length === 0) {
@@ -136,27 +146,32 @@
       let present = 0, late = 0, absent = 0;
 
       records.forEach((student, index) => {
-        if (student.status === 'มา') present++;
-        else if (student.status === 'สาย') late++;
+        const status = student.status ? student.status.trim() : '';
+        if (status === 'มา') present++;
+        else if (status === 'สาย') late++;
         else absent++;
 
-        let badgeClass = student.status === 'มา' ? 'badge-present' : (student.status === 'สาย' ? 'badge-late' : 'badge-absent');
+        let badgeClass = status === 'มา' ? 'badge-present' : (status === 'สาย' ? 'badge-late' : 'badge-absent');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${index + 1}</td>
-          <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class}</span></td>
-          <td><strong>${student.name}</strong></td>
-          <td><span class="badge ${badgeClass}">${student.status}</span></td>
-          <td><span style="color: #666; font-size: 13px;">🕒 ${student.time}</span></td>
+          <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class || '-'}</span></td>
+          <td><strong>${student.name || '-'}</strong></td>
+          <td><span class="badge ${badgeClass}">${status || 'ไม่ระบุ'}</span></td>
+          <td><span style="color: #666; font-size: 13px;">🕒 ${student.time || '-'}</span></td>
           <td><span style="font-size:12px; font-weight:bold;">100%</span></td>
         `;
         tbody.appendChild(tr);
       });
 
       updateCards(records.length, present, late, absent);
+    })
+    .catch(err => {
+      console.error("Error fetching report:", err);
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+      updateCards(0, 0, 0, 0);
     });
-
 }
     function updateCards(total, present, late, absent) {
         document.getElementById('totalCount').textContent = `${total} คน`;
