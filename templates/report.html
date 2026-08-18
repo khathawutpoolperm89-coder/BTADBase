@@ -118,60 +118,59 @@
     });
 
     function generateReport() {
-  const selectedClass = document.getElementById('classSelect').value;
-  const selectedDate = document.getElementById('dateSelect').value;
-  const tbody = document.getElementById('reportTableBody');
+    const selectedClass = document.getElementById('classSelect').value;
+    const selectedDate = document.getElementById('dateSelect').value;
+    const tbody = document.getElementById('reportTableBody');
 
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังดึงข้อมูลจาก Google Sheets...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังดึงข้อมูลจาก Google Sheets...</td></tr>';
 
-  // 🟢 ยิงไปที่ Flask API (ตามที่มีใน app.py)
-  fetch(`/get_attendance_report?date=${selectedDate}&class=${encodeURIComponent(selectedClass)}`)
-    .then(res => res.json())
-    .then(response => {
-      // 🟢 ดึงข้อมูลจาก response.data 
-      let records = (response && response.data) ? response.data : [];
+    // 🟢 แก้ไข URL ให้ตรงกับ @app.route('/api/get_report_data') ใน app.py
+    fetch(`/api/get_report_data?date=${selectedDate}&class=${encodeURIComponent(selectedClass)}`)
+        .then(res => res.json())
+        .then(response => {
+            let records = (response && response.data) ? response.data : [];
 
-      if (!Array.isArray(records)) {
-        records = [];
-      }
+            if (!Array.isArray(records)) {
+                records = [];
+            }
 
-      tbody.innerHTML = '';
+            tbody.innerHTML = '';
 
-      if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลบันทึกในวันที่เลือก</td></tr>';
-        updateCards(0, 0, 0, 0);
-        return;
-      }
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลบันทึกในวันที่เลือก</td></tr>';
+                updateCards(0, 0, 0, 0);
+                return;
+            }
 
-      let present = 0, late = 0, absent = 0;
+            let present = 0, late = 0, absent = 0;
 
-      records.forEach((student, index) => {
-        const status = student.status ? student.status.trim() : '';
-        if (status === 'มา') present++;
-        else if (status === 'สาย') late++;
-        else absent++;
+            records.forEach((student, index) => {
+                const status = student.status ? student.status.trim() : '';
+                if (status === 'มา') present++;
+                else if (status === 'สาย') late++;
+                else absent++;
 
-        let badgeClass = status === 'มา' ? 'badge-present' : (status === 'สาย' ? 'badge-late' : 'badge-absent');
+                let badgeClass = status === 'มา' ? 'badge-present' : (status === 'สาย' ? 'badge-late' : 'badge-absent');
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class || '-'}</span></td>
-          <td><strong>${student.name || '-'}</strong></td>
-          <td><span class="badge ${badgeClass}">${status || 'ไม่ระบุ'}</span></td>
-          <td><span style="color: #666; font-size: 13px;">🕒 ${student.time || '-'}</span></td>
-          <td><span style="font-size:12px; font-weight:bold;">100%</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class || '-'}</span></td>
+                    <td><strong>${student.name || '-'}</strong></td>
+                    <td><span class="badge ${badgeClass}">${status || 'ไม่ระบุ'}</span></td>
+                    <td><span style="color: #666; font-size: 13px;">🕒 ${student.time || '-'}</span></td>
+                    <td><span style="font-size:12px; font-weight:bold;">100%</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
 
-      updateCards(records.length, present, late, absent);
-    })
-    .catch(err => {
-      console.error("Error fetching report:", err);
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
-      updateCards(0, 0, 0, 0);
-    });
+            updateCards(records.length, present, late, absent);
+        })
+        .catch(err => {
+            console.error("Error fetching report:", err);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            updateCards(0, 0, 0, 0);
+        });
 }
     function updateCards(total, present, late, absent) {
         document.getElementById('totalCount').textContent = `${total} คน`;
