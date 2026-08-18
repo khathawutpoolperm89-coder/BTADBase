@@ -174,6 +174,23 @@ def dashboard():
         ]
     }
     return render_template('dashboard.html', data=student_data)
+# 🔵 หน้า Teacher Dashboard (ตรวจสอบสิทธิ์ต้องเป็น teacher เท่านั้น)
+@app.route('/teacher_dashboard')
+def teacher_dashboard():
+    if session.get('role') != 'teacher':
+        return redirect(url_for('login_page'))
+
+    records = get_student_data()
+    classes = set()
+    
+    if records and isinstance(records, list):
+        for row in records:
+            for k, v in row.items():
+                if 'class' in str(k).lower() and v:
+                    classes.add(str(v).strip())
+
+    sorted_classes = sorted(list(classes))
+    return render_template('teacher_dashboard.html', classes=sorted_classes)
 
 @app.route('/logout')
 def logout():
