@@ -16,7 +16,42 @@ def get_student_data():
     except Exception as e:
         print("Error fetching data:", e)
         return []
+@app.route('/save_attendance', methods=['POST'])
+def save_attendance():
+    if 'fullname' not in session:
+        return jsonify({"success": False, "message": "กรุณาเข้าสู่ระบบก่อน"}), 401
 
+    data = request.get_json()
+    attendance_date = data.get('date')
+    selected_class = data.get('class')
+    records = data.get('records') # รายการ [{ name, status, time }, ...]
+
+    try:
+        # 🟢 เพิ่มโค้ดเขียนข้อมูลลง Google Sheets หรือ Database ของคุณตรงนี้
+        # ตัวอย่างโครงสร้างข้อมูลที่จะบันทึก:
+        # for item in records:
+        #     db.save(date=attendance_date, class=selected_class, name=item['name'], status=item['status'], time=item['time'])
+        
+        print(f"บันทึกสำเร็จ: ห้อง {selected_class} วันที่ {attendance_date} จำนวน {len(records)} คน")
+        return jsonify({"success": True, "message": "บันทึกข้อมูลเรียบร้อยแล้ว!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# 2. หน้า Report ที่ดึงประวัติจริงมาแสดง
+@app.route('/get_attendance_report', methods=['GET'])
+def get_attendance_report():
+    selected_date = request.args.get('date')
+    selected_class = request.args.get('class', '')
+
+    # 🟢 ดึงข้อมูลจาก Google Sheets / Database ตามวันที่และห้องเรียน
+    # actual_data = db.fetch_attendance(date=selected_date, class=selected_class)
+    
+    # ส่งข้อมูลจริงกลับไปที่ Client
+    return jsonify({
+        "success": True,
+        "data": [] # ใส่ข้อมูลจริงที่อ่านได้จาก Sheet/DB
+    })
 @app.route('/')
 def login_page():
     if 'fullname' in session:

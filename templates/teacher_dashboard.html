@@ -181,6 +181,53 @@
 
         updateSummary(present, late, absent, total);
     }
+    function saveAttendance() {
+    const selectedClass = document.getElementById('classSelect').value;
+    const selectedDate = document.getElementById('dateSelect').value;
+    const rows = document.querySelectorAll('#studentTableBody tr');
+    
+    if (!selectedClass || !selectedDate) {
+        alert('กรุณาเลือกชั้นเรียนและวันที่ก่อนบันทึก');
+        return;
+    }
+
+    const records = [];
+    const currentTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    rows.forEach((row, index) => {
+        const studentName = row.cells[1].innerText.trim();
+        const statusInput = document.querySelector(`input[name="status_${index}"]:checked`);
+        const status = statusInput ? statusInput.value : 'มา';
+
+        records.push({
+            name: studentName,
+            status: status,
+            time: status === 'ขาด' ? '-' : currentTime
+        });
+    });
+
+    // ยิง API บันทึกข้อมูลลง Backend
+    fetch('/save_attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            class: selectedClass,
+            date: selectedDate,
+            records: records
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('🟢 ' + data.message);
+        } else {
+            alert('🔴 เกิดข้อผิดพลาด: ' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('🔴 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    });
+}
 
     function updateSummary(present, late, absent, total) {
         const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;

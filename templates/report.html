@@ -115,62 +115,56 @@
     });
 
     function generateReport() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const tbody = document.getElementById('reportTableBody');
-        
-        // กรองนักเรียนตามชั้นเรียน
-        let filtered = allStudents;
-        if (selectedClass) {
-            filtered = allStudents.filter(s => s.class === selectedClass);
-        }
+    const selectedClass = document.getElementById('classSelect').value;
+    const selectedDate = document.getElementById('dateSelect').value;
+    const tbody = document.getElementById('reportTableBody');
 
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+
+    // ดึงข้อมูลจริงจาก API
+    fetch(`/get_attendance_report?date=${selectedDate}&class=${selectedClass}`)
+    .then(res => res.json())
+    .then(res => {
+        const attendanceData = res.data || [];
         tbody.innerHTML = '';
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลนักเรียน</td></tr>';
+
+        if (attendanceData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ยังไม่มีการบันทึกข้อมูลในวันนี้</td></tr>';
             updateCards(0, 0, 0, 0);
             return;
         }
 
         let presentCount = 0, lateCount = 0, absentCount = 0;
 
-        filtered.forEach((student, index) => {
-            // จำลองสุ่มสถานะเพื่อตัวอย่างรายงาน
-            const statuses = ['มา', 'มา', 'มา', 'มา', 'สาย', 'ขาด'];
-            const status = statuses[index % statuses.length];
-            
-            if (status === 'มา') presentCount++;
-            else if (status === 'สาย') lateCount++;
+        attendanceData.forEach((student, index) => {
+            if (student.status === 'มา') presentCount++;
+            else if (student.status === 'สาย') lateCount++;
             else absentCount++;
 
             let badgeClass = 'badge-present';
-            if (status === 'สาย') badgeClass = 'badge-late';
-            if (status === 'ขาด') badgeClass = 'badge-absent';
-
-            // เวลาจำลองการบันทึก
-            const timeRecorded = status === 'ขาด' ? '-' : `08:${(10 + (index % 30)).toString().padStart(2, '0')} น.`;
-
-            const rate = (Math.random() * (100 - 80) + 80).toFixed(1); // สถิติตัวอย่าง 80-100%
+            if (student.status === 'สาย') badgeClass = 'badge-late';
+            if (student.status === 'ขาด') badgeClass = 'badge-absent';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class}</span></td>
                 <td><strong>${student.name}</strong></td>
-                <td><span class="badge ${badgeClass}">${status}</span></td>
-                <td><span style="color: #666; font-size: 13px;">🕒 ${timeRecorded}</span></td>
+                <td><span class="badge ${badgeClass}">${student.status}</span></td>
+                <td><span style="color: #666; font-size: 13px;">🕒 ${student.time || '-'}</span></td>
                 <td>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="progress-bg"><div class="progress-bar" style="width: ${rate}%;"></div></div>
-                        <span style="font-size:12px; font-weight:bold;">${rate}%</span>
+                        <div class="progress-bg"><div class="progress-bar" style="width: ${student.rate}%;"></div></div>
+                        <span style="font-size:12px; font-weight:bold;">${student.rate}%</span>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        updateCards(filtered.length, presentCount, lateCount, absentCount);
-    }
-
+        updateCards(attendanceData.length, presentCount, lateCount, absentCount);
+    });
+}
     function updateCards(total, present, late, absent) {
         document.getElementById('totalCount').textContent = `${total} คน`;
         
