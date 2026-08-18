@@ -1,10 +1,9 @@
 import requests
-from flask import Flask, render_template, request, jsonify, session, redirect
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_student_app'
 
-# ตรวจสอบว่า URL นี้เปิดใน Browser แล้วเห็นข้อมูล JSON หรือไม่?
 APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec"
 
 def get_student_data():
@@ -17,35 +16,18 @@ def get_student_data():
     except Exception as e:
         print("Error fetching data:", e)
         return []
-@app.route('/login_staff', methods=['POST'])
-def login_staff():
-    data = request.json
-    role = data.get('role')
-    username = data.get('username')
-    password = data.get('password')
 
-    # ดึงข้อมูล Staff ทั้งหมดจาก Google Sheets
-    res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff")
-    staff_list = res.json()
-
-    # ตรวจสอบว่า Username, Password และ Role ตรงกันหรือไม่
-    user = next((s for s in staff_list if s['username'] == username and s['password'] == password and s['role'] == role), None)
-
-    if user:
-        session['role'] = user['role']
-        session['fullname'] = user['fullname']
-        
-        redirect_url = '/admin_dashboard' if role == 'admin' else '/teacher_dashboard'
-        return jsonify({"success": True, "redirect_url": redirect_url})
-        
-    return jsonify({"success": False, "message": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"})
 @app.route('/')
 def login_page():
     if 'fullname' in session:
+        # แยก Redirect ตามบทบาทที่ล็อกอินค้างไว้
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session.get('role') == 'teacher':
+            return redirect(url_for('teacher_dashboard'))
         return redirect(url_for('dashboard'))
         
     records = get_student_data()
-    
     classes = set()
     all_students = []
     
@@ -68,24 +50,32 @@ def login_page():
                     
     sorted_classes = sorted(list(classes))
     return render_template('login.html', classes=sorted_classes, all_students=all_students)
-@app.route('/get_students_by_class', methods=['POST'])
-def get_students_by_class():
-    selected_class = request.json.get('class_name')
-    records = get_student_data()
-    filtered_students = []
-    
-    if records and isinstance(records, list):
-        for row in records:
-            # ค้นหา key ที่เก็บ class และ name
-            student_class = ""
-            student_name = ""
-            for k, v in row.items():
-                if 'class' in str(k).lower(): student_class = str(v).strip()
-                if 'name' in str(k).lower(): student_name = str(v).strip()
+
+@app.route('/login_staff', methods=['POST'])
+def login_staff():
+    try:
+        data = request.json
+        role = data.get('role')
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+
+        # ดึงข้อมูล Staff ทั้งหมดจาก Google Sheets
+        res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", allow_redirects=True)
+        staff_list = res.json()
+
+        # ตรวจสอบ Username, Password และ Role
+        user = next((s for s in staff_list if str(s['username']) == username and str(s['password']) == password and str(s['role']) == role), None)
+
+        if user:
+            session['role'] = user['role']
+            session['fullname'] = user['fullname']
             
-            if student_class == selected_class:
-                filtered_students.append(student_name)
-    return jsonify({"students": filtered_students})
+            redirect_url = '/admin_dashboard' if role == 'admin' else '/teacher_dashboard'
+            return jsonify({"success": True, "redirect_url": redirect_url})
+            
+        return jsonify({"success": False, "message": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -95,7 +85,6 @@ def login():
     records = get_student_data()
     student = None
     
-    # ค้นหาข้อมูลนักเรียน
     for row in records:
         for k, v in row.items():
             if 'name' in str(k).lower() and str(v).strip() == selected_name:
@@ -103,7 +92,6 @@ def login():
                 break
     
     if student:
-        # ค้นหา student_id
         student_id_val = ""
         for k, v in student.items():
             if 'id' in str(k).lower() and 'national' not in str(k).lower():
@@ -112,6 +100,7 @@ def login():
         last_4 = student_id_val[-4:] if len(student_id_val) >= 4 else student_id_val
         
         if entered_pin == last_4:
+            session['role'] = 'student'
             session['fullname'] = selected_name
             session['student_id'] = student_id_val
             return jsonify({"success": True, "message": "สำเร็จ"})
@@ -119,6 +108,44 @@ def login():
             return jsonify({"success": False, "message": "รหัสผ่านไม่ถูกต้อง"})
             
     return jsonify({"success": False, "message": "ไม่พบข้อมูล"})
+
+# 🔵 [เพิ่มใหม่] หน้า Admin Dashboard
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if session.get('role') != 'admin':
+        return redirect(url_for('login_page'))
+    return render_template('admin_dashboard.html')
+
+# 🔵 [เพิ่มใหม่] API ดึงรายชื่อ Staff ไปแสดงในตารางหน้า Admin
+@app.route('/get_staff_list')
+def get_staff_list():
+    if session.get('role') != 'admin':
+        return jsonify([])
+    res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff")
+    return jsonify(res.json())
+
+@app.route('/create_teacher', methods=['POST'])
+def create_teacher():
+    if session.get('role') != 'admin':
+        return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการดำเนินการนี้"}), 403
+
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    fullname = data.get('fullname')
+
+    if not username or not password or not fullname:
+        return jsonify({"success": False, "message": "กรุณากรอกข้อมูลให้ครบถ้วน"})
+
+    payload = {
+        'action': 'addTeacher',
+        'username': username,
+        'password': password,
+        'fullname': fullname
+    }
+    requests.get(APPS_SCRIPT_URL, params=payload)
+
+    return jsonify({"success": True, "message": "สร้างบัญชีอาจารย์เรียบร้อยแล้ว!"})
 
 @app.route('/dashboard')
 def dashboard():
@@ -146,32 +173,8 @@ def dashboard():
             {"subject": "ภาษาอังกฤษ", "grade": "3.0"}
         ]
     }
-    
     return render_template('dashboard.html', data=student_data)
-@app.route('/create_teacher', methods=['POST'])
-def create_teacher():
-    # ตรวจสอบสิทธิ์ว่าใช่ Admin หรือไม่
-    if session.get('role') != 'admin':
-        return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการดำเนินการนี้"}), 403
 
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-    fullname = data.get('fullname')
-
-    if not username or not password or not fullname:
-        return jsonify({"success": False, "message": "กรุณากรอกข้อมูลให้ครบถ้วน"})
-
-    # บันทึกลง Google Sheets ผ่าน Apps Script
-    payload = {
-        'action': 'addTeacher',
-        'username': username,
-        'password': password,
-        'fullname': fullname
-    }
-    requests.get(APPS_SCRIPT_URL, params=payload)
-
-    return jsonify({"success": True, "message": "สร้างบัญชีอาจารย์เรียบร้อยแล้ว!"})
 @app.route('/logout')
 def logout():
     session.clear()

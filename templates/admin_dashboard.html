@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ระบบจัดการผู้ดูแลระบบ</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        
+        /* Navbar Header */
+        .navbar { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: #ffffff; padding: 15px 25px; border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; 
+        }
+        .navbar h2 { margin: 0; color: #dc3545; display: flex; align-items: center; gap: 8px; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .logout-btn { 
+            background: #dc3545; color: white; border: none; padding: 8px 16px; 
+            border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; 
+        }
+
+        /* Layout Grid */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        
+        .card { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; 
+        }
+        .card h3 { margin-top: 0; border-bottom: 2px solid #f1f1f1; padding-bottom: 10px; color: #444; }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        
+        .btn-submit { 
+            width: 100%; padding: 12px; background: #28a745; color: white; 
+            border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; 
+        }
+        .btn-submit:hover { background: #218838; }
+
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background-color: #f8f9fa; color: #555; }
+        
+        /* Badges */
+        .badge-teacher { background: #e3f2fd; color: #0d6efd; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-admin { background: #f8d7da; color: #dc3545; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar Header -->
+    <div class="navbar">
+        <h2>🔴 แผงควบคุมแอดมิน (Admin Dashboard)</h2>
+        <div class="user-info">
+            <span>ผู้ใช้งาน: <strong>{{ session['fullname'] }}</strong></span>
+            <a href="/logout" class="logout-btn">ออกจากระบบ</a>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <!-- ฝั่งซ้าย: ฟอร์มสร้างบัญชีอาจารย์ -->
+        <div>
+            <div class="card">
+                <h3>➕ เพิ่มบัญชีอาจารย์ใหม่</h3>
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล อาจารย์:</label>
+                    <input type="text" id="teacherName" placeholder="เช่น อ.สมชาย ใจดี">
+                </div>
+                <div class="form-group">
+                    <label>Username (สำหรับ Login):</label>
+                    <input type="text" id="teacherUser" placeholder="เช่น teacher01">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="teacherPass" placeholder="กำหนดรหัสผ่าน">
+                </div>
+                <button class="btn-submit" onclick="saveTeacher()">บันทึกข้อมูลอาจารย์</button>
+            </div>
+        </div>
+
+        <!-- ฝั่งขวา: รายชื่อ Staff และอาจารย์ในระบบ -->
+        <div>
+            <div class="card">
+                <h3>👥 บัญชีเจ้าหน้าที่และอาจารย์ทั้งหมด</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>Username</th>
+                            <th>สิทธิ์การใช้งาน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center;">กำลังโหลดข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // โหลดรายชื่อ Staff ทั้งหมดเมื่อเปิดหน้าเว็บ
+    document.addEventListener("DOMContentLoaded", function() {
+        loadStaffList();
+    });
+
+    function loadStaffList() {
+        fetch('/get_staff_list')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('staffTableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+
+            data.forEach(staff => {
+                const tr = document.createElement('tr');
+                const badgeClass = staff.role === 'admin' ? 'badge-admin' : 'badge-teacher';
+                const roleText = staff.role === 'admin' ? 'แอดมิน' : 'อาจารย์';
+
+                tr.innerHTML = `
+                    <td><strong>${staff.fullname}</strong></td>
+                    <td>${staff.username}</td>
+                    <td><span class="${badgeClass}">${roleText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    function saveTeacher() {
+        const fullname = document.getElementById('teacherName').value.trim();
+        const username = document.getElementById('teacherUser').value.trim();
+        const password = document.getElementById('teacherPass').value.trim();
+
+        if (!fullname || !username || !password) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง');
+            return;
+        }
+
+        fetch('/create_teacher', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullname, username, password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                // ล้างค่าในช่องกรอกข้อมูล
+                document.getElementById('teacherName').value = '';
+                document.getElementById('teacherUser').value = '';
+                document.getElementById('teacherPass').value = '';
+                // โหลดตารางใหม่
+                loadStaffList();
+            }
+        })
+        .catch(err => alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'));
+    }
+</script>
+
+</body>
+</html>
