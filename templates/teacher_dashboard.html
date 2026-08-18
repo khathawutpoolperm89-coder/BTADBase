@@ -215,51 +215,65 @@
     }
 
     function saveAttendance() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const selectedDate = document.getElementById('dateSelect').value;
-        const rows = document.querySelectorAll('#studentTableBody tr');
-        
-        if (!selectedClass || !selectedDate) {
-            alert('กรุณาเลือกชั้นเรียนและวันที่ก่อนบันทึก');
-            return;
-        }
-
-        const records = [];
-        const currentTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-
-        rows.forEach(row => {
-            const studentName = row.cells[1].innerText.trim();
-            const group = row.querySelector('.status-group');
-            const status = group ? group.getAttribute('data-selected') : 'มา';
-
-            records.push({
-                name: studentName,
-                status: status,
-                time: status === 'ขาด' ? '-' : currentTime
-            });
-        });
-
-        fetch('/save_attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                class: selectedClass,
-                date: selectedDate,
-                records: records
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert('🟢 ' + data.message);
-            } else {
-                alert('🔴 เกิดข้อผิดพลาด: ' + data.message);
-            }
-        })
-        .catch(err => {
-            alert('🔴 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-        });
+    const selectedClass = document.getElementById('classSelect').value;
+    const selectedDate = document.getElementById('dateSelect').value;
+    const rows = document.querySelectorAll('#studentTableBody tr');
+    const saveBtn = document.querySelector('.btn-save'); // อ้างอิงถึงปุ่มบันทึก
+    
+    if (!selectedClass || !selectedDate) {
+        alert('กรุณาเลือกชั้นเรียนและวันที่ก่อนบันทึก');
+        return;
     }
+
+    // 🟢 เปลี่ยนข้อความปุ่ม + Disable ปุ่มเพื่อป้องกันการกดซ้ำ
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = '0.7';
+    saveBtn.style.cursor = 'not-allowed';
+    saveBtn.innerHTML = '⏳ กำลังบันทึกข้อมูลลง Google Sheets...';
+
+    const records = [];
+    const currentTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+    rows.forEach(row => {
+        const studentName = row.cells[1].innerText.trim();
+        const group = row.querySelector('.status-group');
+        const status = group ? group.getAttribute('data-selected') : 'มา';
+
+        records.push({
+            name: studentName,
+            status: status,
+            time: status === 'ขาด' ? '-' : currentTime
+        });
+    });
+
+    fetch('/save_attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            class: selectedClass,
+            date: selectedDate,
+            records: records
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('🟢 ' + data.message);
+        } else {
+            alert('🔴 เกิดข้อผิดพลาด: ' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('🔴 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    })
+    .finally(() => {
+        // 🟢 คืนค่าสถานะปุ่มกลับมาเหมือนเดิมเมื่อทำงานเสร็จ (ทั้งสำเร็จและล้มเหลว)
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = '1';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.innerHTML = '💾 บันทึกการเช็คชื่อลง Google Sheets';
+    });
+}
 </script>
 
 </body>
