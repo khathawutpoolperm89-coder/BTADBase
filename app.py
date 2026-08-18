@@ -289,7 +289,20 @@ def report():
 
     sorted_classes = sorted(list(classes))
     return render_template('report.html', classes=sorted_classes, all_students=all_students)
-
+@app.route('/api/get_report_data')
+def get_report_data():
+    date_param = request.args.get('date', '')
+    class_param = request.args.get('class', '')
+    
+    # ส่งต่อ Parameter ไปยัง Web App URL ของ Google Apps Script
+    url = f"{APPS_SCRIPT_URL}?action=getAttendance&date={date_param}&class={quote(class_param)}"
+    
+    try:
+        res = requests.get(url, timeout=10)
+        data = res.json()
+        return jsonify({"status": "success", "data": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 @app.route('/logout')
 def logout():
     session.clear()
