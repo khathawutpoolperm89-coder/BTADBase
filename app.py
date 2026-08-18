@@ -51,32 +51,6 @@ def save_attendance():
 
 # 🟢 [แก้ไข] ดึงประวัติรายงานจาก Google Sheets ตามวันที่และชั้นเรียน
 # 🟢 แก้ไขชื่อ Route ให้ตรงกับหน้าเว็บ HTML
-@app.route('/api/get_report_data', methods=['GET'])
-def get_report_data():
-    selected_date = request.args.get('date')
-    selected_class = request.args.get('class', '')
-
-    try:
-        # ยิง GET ไปยัง Google Apps Script พร้อม parameter
-        params = {
-            "action": "getAttendance",
-            "date": selected_date,
-            "class": selected_class
-        }
-        response = requests.get(APPS_SCRIPT_URL, params=params, timeout=10)
-        
-        if response.status_code == 200:
-            res_data = response.json()
-            return jsonify({
-                "success": True,
-                "data": res_data if isinstance(res_data, list) else []
-            })
-        
-        return jsonify({"success": False, "data": [], "message": "ไม่สามารถดึงข้อมูลได้"}), 500
-
-    except Exception as e:
-        print("Get report error:", e)
-        return jsonify({"success": False, "data": [], "message": str(e)}), 500
 
 
 @app.route('/')
