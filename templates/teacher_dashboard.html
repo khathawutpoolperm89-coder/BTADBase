@@ -122,6 +122,7 @@
         <div style="clear: both;"></div>
     </div>
 <!-- SweetAlert2 CSS & JS -->
+<!-- SweetAlert2 CSS & JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const allStudentsData = {{ all_students | tojson }};
@@ -157,7 +158,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
-                <td><strong>${student.name}</strong></td>
+                <td><strong class="student-name">${student.name}</strong></td>
                 <td>
                     <div class="status-group" data-selected="มา">
                         <button type="button" class="btn-status active-present" onclick="selectStatus(this, 'มา')">มา</button>
@@ -215,44 +216,74 @@
         document.getElementById('percentAbsent').textContent = pAbsent;
     }
 
-    function saveAttendance() {
-    Swal.fire({
-        title: 'กำลังบันทึกข้อมูล...',
-        text: 'กำลังส่งข้อมูลไปยัง Google Sheets',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    const payload = {
-        action: "saveAttendance",
-        date: document.getElementById('attendanceDate').value,
-        class: document.getElementById('classSelect').value,
-        records: getAttendanceRecords()
-    };
-
-    // ⚡ ยิงตรงหา Apps Script URL
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
-
-    fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // ยิงแบบไม่รอ Response ป้องกันปัญหา CORS และได้ความเร็วระดับมิลลิวินาที
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-    })
-    .then(() => {
-        // แสดงผลสำเร็จทันที
-        Swal.fire({
-            icon: 'success',
-            title: 'บันทึกเรียบร้อย!',
-            timer: 1500,
-            showConfirmButton: false
+    // 🟢 เพิ่มฟังก์ชันดึงรายชื่อและสถานะเช็คชื่อจากตาราง
+    function getAttendanceRecords() {
+        const records = [];
+        const now = new Date();
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        const rows = document.querySelectorAll('#studentTableBody tr');
+        rows.forEach(row => {
+            const nameEl = row.querySelector('.student-name');
+            const groupEl = row.querySelector('.status-group');
+            
+            if (nameEl && groupEl) {
+                records.push({
+                    name: nameEl.textContent.trim(),
+                    status: groupEl.getAttribute('data-selected') || 'มา',
+                    time: currentTime
+                });
+            }
         });
-    })
-    .catch(err => {
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
-    });
-}
+        return records;
+    }
+
+    function saveAttendance() {
+        // 🟢 แก้ไข ID ของวันที่ให้ถูกต้องเป็น dateSelect
+        const selectedDate = document.getElementById('dateSelect').value;
+        const selectedClass = document.getElementById('classSelect').value;
+        const records = getAttendanceRecords();
+
+        if (!selectedClass || records.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนก่อนบันทึก' });
+            return;
+        }
+
+        Swal.fire({
+            title: 'กำลังบันทึกข้อมูล...',
+            text: 'กำลังส่งข้อมูลไปยัง Google Sheets',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const payload = {
+            action: "saveAttendance",
+            date: selectedDate,
+            class: selectedClass,
+            records: records
+        };
+
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
+
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'บันทึกเรียบร้อย!',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        })
+        .catch(err => {
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
+        });
+    }
 </script>
 
 </body>
