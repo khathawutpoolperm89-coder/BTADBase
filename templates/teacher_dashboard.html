@@ -49,7 +49,28 @@
             <a href="/logout" class="logout-btn" style="margin-left: 15px;">ออกจากระบบ</a>
         </div>
     </div>
-
+<div class="summary-cards">
+    <div class="stat-box stat-present">
+        มาเรียน: <span id="countPresent">0</span> คน 
+        <small>(<span id="percentPresent">0</span>%)</small>
+    </div>
+    <div class="stat-box stat-late">
+        มาสาย: <span id="countLate">0</span> คน 
+        <small>(<span id="percentLate">0</span>%)</small>
+    </div>
+    <div class="stat-box stat-absent">
+        ขาด/ลา: <span id="countAbsent">0</span> คน 
+        <small>(<span id="percentAbsent">0</span>%)</small>
+    </div>
+</div>
+<div class="navbar">
+    <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
+    <div>
+        <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
+        <a href="/report" style="background:#28a745; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:bold; margin-left:15px;">📊 ดูรายงานภาพรวม</a>
+        <a href="/logout" class="logout-btn" style="margin-left: 10px;">ออกจากระบบ</a>
+    </div>
+</div>
     <!-- เมนูตัวกรอง: ห้องเรียน + เลือกวันที่ย้อนหลัง -->
     <div class="card">
         <div class="filter-bar">
@@ -95,28 +116,7 @@
         <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อวันที่เลือก</button>
         <div style="clear: both;"></div>
     </div>
-<div class="summary-cards">
-    <div class="stat-box stat-present">
-        มาเรียน: <span id="countPresent">0</span> คน 
-        <small>(<span id="percentPresent">0</span>%)</small>
-    </div>
-    <div class="stat-box stat-late">
-        มาสาย: <span id="countLate">0</span> คน 
-        <small>(<span id="percentLate">0</span>%)</small>
-    </div>
-    <div class="stat-box stat-absent">
-        ขาด/ลา: <span id="countAbsent">0</span> คน 
-        <small>(<span id="percentAbsent">0</span>%)</small>
-    </div>
-</div>
-<div class="navbar">
-    <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
-    <div>
-        <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
-        <a href="/report" style="background:#28a745; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:bold; margin-left:15px;">📊 ดูรายงานภาพรวม</a>
-        <a href="/logout" class="logout-btn" style="margin-left: 10px;">ออกจากระบบ</a>
-    </div>
-</div>
+
 <script>
     const allStudentsData = {{ all_students | tojson }};
 
