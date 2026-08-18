@@ -17,7 +17,25 @@ def get_student_data():
     except Exception as e:
         print("Error fetching data:", e)
         return []
-
+@app.route('/login_staff', methods=['POST'])
+def login_staff():
+    data = request.json
+    role = data.get('role')
+    username = data.get('username')
+    password = data.get('password')
+    
+    # 🔴 ตัวอย่างตรวจสอบรหัสแบบตั้งค่าไว้ในโค้ด (หรือจะดึงจาก Sheets ก็ได้)
+    if role == 'teacher' and username == 'teacher' and password == '1234':
+        session['role'] = 'teacher'
+        session['fullname'] = 'อาจารย์ผู้ดูแล'
+        return jsonify({"success": True, "redirect_url": "/teacher_dashboard"})
+        
+    elif role == 'admin' and username == 'admin' and password == 'admin1234':
+        session['role'] = 'admin'
+        session['fullname'] = 'ผู้ดูแลระบบสูงสุด'
+        return jsonify({"success": True, "redirect_url": "/admin_dashboard"})
+        
+    return jsonify({"success": False, "message": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"})
 @app.route('/')
 def login_page():
     if 'fullname' in session:

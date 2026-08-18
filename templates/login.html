@@ -2,152 +2,199 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>เข้าสู่ระบบ - ระบบนักเรียน</title>
+    <title>เข้าสู่ระบบ</title>
     <style>
         .login-card { 
-            width: 340px; 
-            margin: 50px auto; 
+            width: 360px; 
+            margin: 40px auto; 
             padding: 25px; 
             border: 1px solid #e0e0e0; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             font-family: 'Segoe UI', sans-serif; 
             text-align: center; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
             background: #fff; 
             position: relative;
-            overflow: hidden; /* ซ่อนเส้นวิ่งส่วนเกินขอบการ์ด */
+            overflow: hidden;
         }
         
-        /* 🔵 CSS สำหรับเส้น Progress Bar โหลดวิ่งๆ ด้านบนการ์ด */
-        .loading-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: #e0e0e0;
-            display: none; /* ซ่อนไว้ก่อนกดเข้าสู่ระบบ */
+        /* 🔵 Tab สลับประเภทผู้ใช้ */
+        .role-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
-        .loading-bar::before {
-            content: '';
-            position: absolute;
-            background-color: #007bff;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 40%;
-            animation: moveBar 1.2s infinite ease-in-out;
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
         }
-        @keyframes moveBar {
-            0% { left: -40%; width: 30%; }
-            50% { width: 60%; }
-            100% { left: 100%; width: 30%; }
+        .tab-btn.active {
+            background: #ffffff;
+            color: #007bff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
+
+        /* 🔵 CSS สำหรับฟอร์มอาจารย์ / แอดมิน */
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; display: block; }
+        .input-text { 
+            width: 100%; 
+            padding: 10px 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            box-sizing: border-box;
+            outline: none;
+        }
+        .input-text:focus { border-color: #007bff; }
 
         .pin-box-container { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
         .pin-box { width: 45px; height: 50px; font-size: 24px; text-align: center; border: 1px solid #ccc; border-radius: 8px; }
         select { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; font-size: 15px; border-radius: 6px; border: 1px solid #ccc; }
         label { font-weight: 600; color: #444; display: block; text-align: left; font-size: 14px; margin-top: 10px; }
         
-        /* สไตล์ปุ่มกด */
-        button { 
-            width: 100%; 
-            padding: 12px; 
-            background-color: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 10px; 
-            transition: all 0.2s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
+        button.submit-btn { 
+            width: 100%; padding: 12px; background-color: #007bff; color: white; 
+            border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; 
         }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #a0c7ff; cursor: not-allowed; }
+        button.submit-btn:hover { background-color: #0056b3; }
         
-        /* CSS Spinner ในปุ่ม */
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 3px solid #ffffff;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-        }
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .loading-bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background-color: #e0e0e0; display: none; }
+        .loading-bar::before { content: ''; position: absolute; background-color: #007bff; top: 0; left: 0; bottom: 0; width: 40%; animation: moveBar 1.2s infinite ease-in-out; }
+        @keyframes moveBar { 0% { left: -40%; width: 30%; } 50% { width: 60%; } 100% { left: 100%; width: 30%; } }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <!-- เส้นProgress Bar วิ่งๆ บนการ์ด -->
     <div id="loadingBar" class="loading-bar"></div>
 
-    <h2 style="margin-top:0; color:#007bff;">เข้าสู่ระบบนักเรียน</h2>
-    
-    <!-- 1. Dropdown เลือกชั้นเรียน -->
-    <label for="classSelect">1. เลือกชั้นเรียน:</label>
-    <select id="classSelect" onchange="loadStudentsByClass()">
-        <option value="">-- กรุณาเลือกชั้นเรียน --</option>
-        {% for c in classes %}
-            <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
-    </select>
-
-    <!-- 2. Dropdown เลือกชื่อ-นามสกุล -->
-<label for="studentSelect">2. เลือกชื่อ-นามสกุล:</label>
-<select id="studentSelect" onchange="focusPinBox()" disabled>
-    <option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>
-</select>
-
-    <!-- 3. ช่องใส่รหัส PIN 4 ตัวท้าย -->
-    <label>3. รหัสผ่าน (เลข 4 ตัวท้ายรหัสนักศึกษา):</label>
-    <div class="pin-box-container">
-        <input type="password" maxlength="1" class="pin-box" id="pin1" oninput="moveFocus(this, 'pin2')">
-        <input type="password" maxlength="1" class="pin-box" id="pin2" oninput="moveFocus(this, 'pin3')" onkeydown="checkBackspace(event, 'pin1')">
-        <input type="password" maxlength="1" class="pin-box" id="pin3" oninput="moveFocus(this, 'pin4')" onkeydown="checkBackspace(event, 'pin2')">
-        <input type="password" maxlength="1" class="pin-box" id="pin4" oninput="moveFocus(this, null)" onkeydown="checkBackspace(event, 'pin3')">
+    <!-- 1. ปุ่ม Switch Tab เลือกบทบาท -->
+    <div class="role-tabs">
+        <button class="tab-btn active" onclick="switchRole('student')">นักเรียน</button>
+        <button class="tab-btn" onclick="switchRole('teacher')">อาจารย์</button>
+        <button class="tab-btn" onclick="switchRole('admin')">แอดมิน</button>
     </div>
 
-    <button id="loginBtn" onclick="submitLogin()">
-        <span id="btnText">เข้าสู่ระบบ</span>
-    </button>
+    <!-- 2. ฟอร์มสำหรับนักเรียน -->
+    <div id="studentForm">
+        <h3 style="margin-top:0; color:#007bff;">เข้าสู่ระบบนักเรียน</h3>
+        <label for="classSelect">1. เลือกชั้นเรียน:</label>
+        <select id="classSelect" onchange="loadStudentsByClass()">
+            <option value="">-- กรุณาเลือกชั้นเรียน --</option>
+            {% for c in classes %}
+                <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="studentSelect">2. เลือกชื่อ-นามสกุล:</label>
+        <select id="studentSelect" onchange="focusPinBox()" disabled>
+            <option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>
+        </select>
+
+        <label>3. รหัสผ่าน (เลข 4 ตัวท้าย):</label>
+        <div class="pin-box-container">
+            <input type="password" maxlength="1" class="pin-box" id="pin1" oninput="moveFocus(this, 'pin2')">
+            <input type="password" maxlength="1" class="pin-box" id="pin2" oninput="moveFocus(this, 'pin3')" onkeydown="checkBackspace(event, 'pin1')">
+            <input type="password" maxlength="1" class="pin-box" id="pin3" oninput="moveFocus(this, 'pin4')" onkeydown="checkBackspace(event, 'pin2')">
+            <input type="password" maxlength="1" class="pin-box" id="pin4" oninput="moveFocus(this, null)" onkeydown="checkBackspace(event, 'pin3')">
+        </div>
+        <button class="submit-btn" onclick="submitLogin()">เข้าสู่ระบบ</button>
+    </div>
+
+    <!-- 3. ฟอร์มสำหรับอาจารย์ / แอดมิน -->
+    <div id="staffForm" style="display: none;">
+        <h3 id="staffTitle" style="margin-top:0; color:#007bff;">เข้าสู่ระบบอาจารย์</h3>
+        
+        <div class="form-group">
+            <label>ชื่อผู้ใช้งาน / อีเมล:</label>
+            <input type="text" id="staffUsername" class="input-text" placeholder="กรอก Username หรือ Email">
+        </div>
+
+        <div class="form-group">
+            <label>รหัสผ่าน:</label>
+            <input type="password" id="staffPassword" class="input-text" placeholder="กรอกรหัสผ่าน">
+        </div>
+
+        <button class="submit-btn" onclick="submitStaffLogin()">เข้าสู่ระบบ</button>
+    </div>
 </div>
 
 <script>
+    let currentRole = 'student';
     const allStudentsData = {{ all_students | tojson }};
-function focusPinBox() {
-    const studentSelect = document.getElementById('studentSelect');
-    // ถ้ามีการเลือกชื่อจริง (ไม่ใช่ค่าว่าง) ให้ย้าย Focus ไปช่อง pin1 ทันที
-    if (studentSelect.value !== "") {
-        document.getElementById('pin1').focus();
+
+    // ฟังก์ชันสลับ Tab หน้าจอ
+    function switchRole(role) {
+        currentRole = role;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        if (role === 'student') {
+            event.target.classList.add('active');
+            document.getElementById('studentForm').style.display = 'block';
+            document.getElementById('staffForm').style.display = 'none';
+        } else {
+            event.target.classList.add('active');
+            document.getElementById('studentForm').style.display = 'none';
+            document.getElementById('staffForm').style.display = 'block';
+            
+            const title = document.getElementById('staffTitle');
+            if (role === 'teacher') {
+                title.textContent = 'เข้าสู่ระบบอาจารย์';
+                title.style.color = '#007bff';
+            } else {
+                title.textContent = 'เข้าสู่ระบบแอดมิน';
+                title.style.color = '#dc3545'; // เปลี่ยนเป็นสีแดงสำหรับแอดมิน
+            }
+        }
     }
-}
+
+    // ฟังก์ชันยิง Login สำหรับ อาจารย์/แอดมิน
+    function submitStaffLogin() {
+        const username = document.getElementById('staffUsername').value;
+        const password = document.getElementById('staffPassword').value;
+
+        if (!username || !password) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        fetch('/login_staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: currentRole, username: username, password: password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    // --- สคริปต์เดิมของนักเรียน ---
     function loadStudentsByClass() {
-        const classSelect = document.getElementById('classSelect');
+        const selectedClass = document.getElementById('classSelect').value;
         const studentSelect = document.getElementById('studentSelect');
-        const selectedClass = classSelect.value;
-
         studentSelect.innerHTML = '';
-
         if (!selectedClass) {
             studentSelect.innerHTML = '<option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>';
             studentSelect.disabled = true;
             return;
         }
-
         const filtered = allStudentsData.filter(s => s.class === selectedClass);
-
         if (filtered.length > 0) {
             studentSelect.innerHTML = '<option value="">-- กรุณาเลือกชื่อ-นามสกุล --</option>';
             filtered.forEach(s => {
@@ -157,9 +204,12 @@ function focusPinBox() {
                 studentSelect.appendChild(opt);
             });
             studentSelect.disabled = false;
-        } else {
-            studentSelect.innerHTML = '<option value="">-- ไม่พบนักเรียนในชั้นนี้ --</option>';
-            studentSelect.disabled = true;
+        }
+    }
+
+    function focusPinBox() {
+        if (document.getElementById('studentSelect').value !== "") {
+            document.getElementById('pin1').focus();
         }
     }
 
@@ -172,10 +222,7 @@ function focusPinBox() {
                 const p2 = document.getElementById('pin2').value;
                 const p3 = document.getElementById('pin3').value;
                 const p4 = document.getElementById('pin4').value;
-
-                if (p1 && p2 && p3 && p4) {
-                    submitLogin();
-                }
+                if (p1 && p2 && p3 && p4) submitLogin();
             }
         }
     }
@@ -188,20 +235,12 @@ function focusPinBox() {
 
     function submitLogin() {
         const studentName = document.getElementById('studentSelect').value;
-        const p1 = document.getElementById('pin1').value;
-        const p2 = document.getElementById('pin2').value;
-        const p3 = document.getElementById('pin3').value;
-        const p4 = document.getElementById('pin4').value;
-        
-        const fullPin = p1 + p2 + p3 + p4;
+        const fullPin = document.getElementById('pin1').value + document.getElementById('pin2').value + document.getElementById('pin3').value + document.getElementById('pin4').value;
 
         if (!studentName || fullPin.length < 4) {
-            alert('กรุณาเลือกชื่อและกรอกรหัสผ่านให้ครบ 4 หลัก');
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
             return;
         }
-
-        // 🔵 เริ่มการแสดงผลสถานะ Loading
-        setLoadingState(true);
 
         fetch('/login', {
             method: 'POST',
@@ -210,37 +249,9 @@ function focusPinBox() {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                window.location.href = '/dashboard';
-            } else {
-                alert(data.message);
-                setLoadingState(false); // ยกเลิก Loading เมื่อพบข้อผิดพลาด
-            }
-        })
-        .catch(err => {
-            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-            setLoadingState(false);
+            if (data.success) window.location.href = '/dashboard';
+            else alert(data.message);
         });
-    }
-
-    // ฟังก์ชันจัดการ UI สถานะกำลังโหลด
-    function setLoadingState(isLoading) {
-        const loadingBar = document.getElementById('loadingBar');
-        const loginBtn = document.getElementById('loginBtn');
-        const btnText = document.getElementById('btnText');
-        const inputs = document.querySelectorAll('select, input');
-
-        if (isLoading) {
-            loadingBar.style.display = 'block';
-            loginBtn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
-            inputs.forEach(i => i.disabled = true);
-        } else {
-            loadingBar.style.display = 'none';
-            loginBtn.disabled = false;
-            btnText.textContent = 'เข้าสู่ระบบ';
-            inputs.forEach(i => i.disabled = false);
-        }
     }
 </script>
 
