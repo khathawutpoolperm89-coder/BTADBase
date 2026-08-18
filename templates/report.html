@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายงานการเข้าเรียน - Attendance Report</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        
+        .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .navbar h2 { margin: 0; color: #28a745; }
+        .back-btn { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; }
+
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .filter-bar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        select, input[type="date"] { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; min-width: 180px; }
+
+        /* Grid สรุปยอด */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { padding: 15px; border-radius: 10px; text-align: center; color: white; font-weight: bold; }
+        .bg-total { background: #17a2b8; }
+        .bg-present { background: #28a745; }
+        .bg-late { background: #ffc107; color: #333; }
+        .bg-absent { background: #dc3545; }
+        .stat-card h3 { margin: 5px 0 0 0; font-size: 24px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background-color: #f8f9fa; color: #555; }
+        
+        /* Badge สไตล์ */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .badge-present { background: #e8f5e9; color: #2e7d32; }
+        .badge-late { background: #fff8e1; color: #f57f17; }
+        .badge-absent { background: #ffebee; color: #c62828; }
+
+        /* Progress Bar แสดง % สถิติ */
+        .progress-bg { background: #e9ecef; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; }
+        .progress-bar { background: #28a745; height: 100%; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>📊 รายงานสรุปการเข้าเรียน (Attendance Report)</h2>
+        <div>
+            <a href="javascript:history.back()" class="back-btn">⬅ ย้อนกลับ</a>
+        </div>
+    </div>
+
+    <!-- เมนูตัวกรองรายงาน -->
+    <div class="card">
+        <div class="filter-bar">
+            <div>
+                <label><strong>เลือกชั้นเรียน:</strong></label><br>
+                <select id="classSelect" onchange="generateReport()">
+                    <option value="">-- แสดงทุกชั้นเรียน --</option>
+                    {% for c in classes %}
+                        <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label><strong>ประจำวันที่:</strong></label><br>
+                <input type="date" id="dateSelect" onchange="generateReport()">
+            </div>
+        </div>
+    </div>
+
+    <!-- กล่องสรุปภาพรวม -->
+    <div class="summary-grid">
+        <div class="stat-card bg-total">
+            <span>นักเรียนทั้งหมด</span>
+            <h3 id="totalCount">0 คน</h3>
+        </div>
+        <div class="stat-card bg-present">
+            <span>มาเรียน</span>
+            <h3 id="presentCount">0 คน (0%)</h3>
+        </div>
+        <div class="stat-card bg-late">
+            <span>มาสาย</span>
+            <h3 id="lateCount">0 คน (0%)</h3>
+        </div>
+        <div class="stat-card bg-absent">
+            <span>ขาด/ลา</span>
+            <h3 id="absentCount">0 คน (0%)</h3>
+        </div>
+    </div>
+
+    <!-- ตารางแสดงรายงานรายบุคคล -->
+    <div class="card">
+        <h3>📋 รายงานการเข้าเรียนรายบุคคล</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 6%;">ลำดับ</th>
+                    <th style="width: 12%;">ชั้นเรียน</th>
+                    <th style="width: 30%;">ชื่อ-นามสกุล</th>
+                    <th style="width: 15%;">สถานะวันนี้</th>
+                    <th style="width: 17%;">เวลาที่บันทึก</th>
+                    <th style="width: 20%;">อัตราการเข้าเรียนรวม</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+        </table>
+    </div>
+
+<script>
+    const allStudents = {{ all_students | tojson }};
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('dateSelect').valueAsDate = new Date();
+        generateReport();
+    });
+
+    function generateReport() {
+        const selectedClass = document.getElementById('classSelect').value;
+        const tbody = document.getElementById('reportTableBody');
+        
+        // กรองนักเรียนตามชั้นเรียน
+        let filtered = allStudents;
+        if (selectedClass) {
+            filtered = allStudents.filter(s => s.class === selectedClass);
+        }
+
+        tbody.innerHTML = '';
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลนักเรียน</td></tr>';
+            updateCards(0, 0, 0, 0);
+            return;
+        }
+
+        let presentCount = 0, lateCount = 0, absentCount = 0;
+
+        filtered.forEach((student, index) => {
+            // จำลองสุ่มสถานะเพื่อตัวอย่างรายงาน
+            const statuses = ['มา', 'มา', 'มา', 'มา', 'สาย', 'ขาด'];
+            const status = statuses[index % statuses.length];
+            
+            if (status === 'มา') presentCount++;
+            else if (status === 'สาย') lateCount++;
+            else absentCount++;
+
+            let badgeClass = 'badge-present';
+            if (status === 'สาย') badgeClass = 'badge-late';
+            if (status === 'ขาด') badgeClass = 'badge-absent';
+
+            // เวลาจำลองการบันทึก
+            const timeRecorded = status === 'ขาด' ? '-' : `08:${(10 + (index % 30)).toString().padStart(2, '0')} น.`;
+
+            const rate = (Math.random() * (100 - 80) + 80).toFixed(1); // สถิติตัวอย่าง 80-100%
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class}</span></td>
+                <td><strong>${student.name}</strong></td>
+                <td><span class="badge ${badgeClass}">${status}</span></td>
+                <td><span style="color: #666; font-size: 13px;">🕒 ${timeRecorded}</span></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="progress-bg"><div class="progress-bar" style="width: ${rate}%;"></div></div>
+                        <span style="font-size:12px; font-weight:bold;">${rate}%</span>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        updateCards(filtered.length, presentCount, lateCount, absentCount);
+    }
+
+    function updateCards(total, present, late, absent) {
+        document.getElementById('totalCount').textContent = `${total} คน`;
+        
+        const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+        const pLate = total > 0 ? ((late / total) * 100).toFixed(1) : 0;
+        const pAbsent = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
+
+        document.getElementById('presentCount').textContent = `${present} คน (${pPresent}%)`;
+        document.getElementById('lateCount').textContent = `${late} คน (${pLate}%)`;
+        document.getElementById('absentCount').textContent = `${absent} คน (${pAbsent}%)`;
+    }
+</script>
+
+</body>
+</html>
