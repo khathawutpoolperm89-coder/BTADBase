@@ -3,23 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard</title>
+    <title>Teacher Dashboard - ตรวจสอบย้อนหลัง</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        
         .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .navbar h2 { margin: 0; color: #007bff; }
         .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; }
+
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px; min-width: 200px; }
+        
+        /* Bar เลือกห้องและวันที่ */
+        .filter-bar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .form-control { display: flex; flex-direction: column; gap: 5px; }
+        .form-control label { font-weight: bold; font-size: 14px; }
+        select, input[type="date"] { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+
+        /* สรุปยอดประจำวัน */
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .stat-box { padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; }
+        .stat-present { background: #e8f5e9; color: #2e7d32; }
+        .stat-late { background: #fff8e1; color: #f57f17; }
+        .stat-absent { background: #ffebee; color: #c62828; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background-color: #f8f9fa; color: #555; }
+
         .status-group { display: flex; gap: 10px; }
         .status-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .status-present { background-color: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
-        .status-late { background-color: #fff8e1; color: #f57f17; border-color: #ffe082; }
-        .status-absent { background-color: #ffebee; color: #c62828; border-color: #ef9a9a; }
+        .btn-present { background-color: #e8f5e9; color: #2e7d32; }
+        .btn-late { background-color: #fff8e1; color: #f57f17; }
+        .btn-absent { background-color: #ffebee; color: #c62828; }
+
         .btn-save { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; float: right; margin-top: 15px; }
     </style>
 </head>
@@ -33,57 +50,81 @@
         </div>
     </div>
 
+    <!-- เมนูตัวกรอง: ห้องเรียน + เลือกวันที่ย้อนหลัง -->
     <div class="card">
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <label for="classSelect"><strong>เลือกห้องเรียนที่ต้องการจัดการ:</strong></label>
-            <select id="classSelect" onchange="renderStudents()">
-                <option value="">-- กรุณาเลือกชั้นเรียน --</option>
-                {% for c in classes %}
-                    <option value="{{ c }}">{{ c }}</option>
-                {% endfor %}
-            </select>
+        <div class="filter-bar">
+            <div class="form-control">
+                <label>1. เลือกชั้นเรียน:</label>
+                <select id="classSelect" onchange="renderAttendanceTable()">
+                    <option value="">-- กรุณาเลือกชั้นเรียน --</option>
+                    {% for c in classes %}
+                        <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label>2. เลือกวันที่ต้องการจัดการ/ดูย้อนหลัง:</label>
+                <input type="date" id="dateSelect" onchange="renderAttendanceTable()">
+            </div>
         </div>
     </div>
 
+    <!-- ตารางบันทึก/ดูย้อนหลัง -->
     <div class="card" id="studentCard" style="display: none;">
         <h3 id="classTitle">รายชื่อนักเรียน</h3>
+        
+        <!-- กล่องสรุปยอดประจำวัน -->
+        <div class="summary-cards">
+            <div class="stat-box stat-present">มาเรียน: <span id="countPresent">0</span> คน</div>
+            <div class="stat-box stat-late">มาสาย: <span id="countLate">0</span> คน</div>
+            <div class="stat-box stat-absent">ขาด/ลา: <span id="countAbsent">0</span> คน</div>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th style="width: 10%;">ลำดับ</th>
                     <th style="width: 40%;">ชื่อ-นามสกุล</th>
-                    <th style="width: 50%;">สถานะการเข้าเรียนวันนี้</th>
+                    <th style="width: 50%;">สถานะเข้าเรียน</th>
                 </tr>
             </thead>
             <tbody id="studentTableBody"></tbody>
         </table>
-        <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อ</button>
+        
+        <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อวันที่เลือก</button>
         <div style="clear: both;"></div>
     </div>
 
 <script>
-    // 🚀 ฝังข้อมูลนักเรียนทั้งหมดจาก Flask ไว้ใน JavaScript ล่วงหน้า
     const allStudentsData = {{ all_students | tojson }};
 
-    function renderStudents() {
+    // ตั้งค่าวันที่เริ่มต้นในปฏิทินให้เป็น "วันนี้" อัตโนมัติ
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('dateSelect').valueAsDate = new Date();
+    });
+
+    function renderAttendanceTable() {
         const selectedClass = document.getElementById('classSelect').value;
+        const selectedDate = document.getElementById('dateSelect').value;
         const studentCard = document.getElementById('studentCard');
         const tbody = document.getElementById('studentTableBody');
         
-        if (!selectedClass) {
+        if (!selectedClass || !selectedDate) {
             studentCard.style.display = 'none';
             return;
         }
 
-        document.getElementById('classTitle').textContent = `รายชื่อนักเรียนชั้น ${selectedClass}`;
+        document.getElementById('classTitle').textContent = `เช็คชื่อนักเรียนชั้น ${selectedClass} ประจำวันที่ ${selectedDate}`;
         tbody.innerHTML = '';
         studentCard.style.display = 'block';
 
-        // ⚡ กรองข้อมูลบนเครื่องของผู้ใช้ทันที (ไม่ต้องรอ Fetch)
+        // กรองนักเรียนตามห้อง
         const filtered = allStudentsData.filter(s => s.class === selectedClass);
 
         if (filtered.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">ไม่พบนักเรียนในห้องนี้</td></tr>';
+            updateSummary(0, 0, 0);
             return;
         }
 
@@ -94,24 +135,50 @@
                 <td><strong>${student.name}</strong></td>
                 <td>
                     <div class="status-group">
-                        <label class="status-btn status-present">
-                            <input type="radio" name="status_${index}" value="มา" checked> มา
+                        <label class="status-btn btn-present">
+                            <input type="radio" name="status_${index}" value="มา" checked onchange="calculateStats()"> มา
                         </label>
-                        <label class="status-btn status-late">
-                            <input type="radio" name="status_${index}" value="สาย"> สาย
+                        <label class="status-btn btn-late">
+                            <input type="radio" name="status_${index}" value="สาย" onchange="calculateStats()"> สาย
                         </label>
-                        <label class="status-btn status-absent">
-                            <input type="radio" name="status_${index}" value="ขาด"> ขาด/ลา
+                        <label class="status-btn btn-absent">
+                            <input type="radio" name="status_${index}" value="ขาด" onchange="calculateStats()"> ขาด/ลา
                         </label>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+
+        calculateStats();
+    }
+
+    // คำนวณสรุปยอดประจำวันแบบ Real-time
+    function calculateStats() {
+        const rows = document.querySelectorAll('#studentTableBody tr');
+        let present = 0, late = 0, absent = 0;
+
+        rows.forEach((row, i) => {
+            const status = document.querySelector(`input[name="status_${i}"]:checked`);
+            if (status) {
+                if (status.value === 'มา') present++;
+                else if (status.value === 'สาย') late++;
+                else if (status.value === 'ขาด') absent++;
+            }
+        });
+
+        updateSummary(present, late, absent);
+    }
+
+    function updateSummary(present, late, absent) {
+        document.getElementById('countPresent').textContent = present;
+        document.getElementById('countLate').textContent = late;
+        document.getElementById('countAbsent').textContent = absent;
     }
 
     function saveAttendance() {
-        alert('บันทึกข้อมูลการเข้าเรียนเรียบร้อยแล้ว!');
+        const selectedDate = document.getElementById('dateSelect').value;
+        alert(`บันทึกข้อมูลการเข้าเรียนประจำวันที่ ${selectedDate} เรียบร้อยแล้ว!`);
     }
 </script>
 
