@@ -124,8 +124,13 @@
 
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังดึงข้อมูลจาก Google Sheets...</td></tr>';
 
-    // 🟢 แก้ไข URL ให้ตรงกับ @app.route('/api/get_report_data') ใน app.py
-    fetch(`/api/get_report_data?date=${selectedDate}&class=${encodeURIComponent(selectedClass)}`)
+    // 🟢 ปรับการสร้าง query string: ถ้าไม่ได้เลือกห้อง ให้ส่งเฉพาะ date
+    let queryUrl = `/api/get_report_data?date=${selectedDate}`;
+    if (selectedClass && selectedClass.trim() !== "") {
+        queryUrl += `&class=${encodeURIComponent(selectedClass)}`;
+    }
+
+    fetch(queryUrl)
         .then(res => res.json())
         .then(response => {
             let records = (response && response.data) ? response.data : [];
