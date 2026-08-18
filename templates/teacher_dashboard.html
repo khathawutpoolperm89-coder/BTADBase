@@ -109,6 +109,14 @@
         <small>(<span id="percentAbsent">0</span>%)</small>
     </div>
 </div>
+<div class="navbar">
+    <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
+    <div>
+        <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
+        <a href="/report" style="background:#28a745; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:bold; margin-left:15px;">📊 ดูรายงานภาพรวม</a>
+        <a href="/logout" class="logout-btn" style="margin-left: 10px;">ออกจากระบบ</a>
+    </div>
+</div>
 <script>
     const allStudentsData = {{ all_students | tojson }};
 
