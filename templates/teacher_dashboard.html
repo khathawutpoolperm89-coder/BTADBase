@@ -95,7 +95,20 @@
         <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อวันที่เลือก</button>
         <div style="clear: both;"></div>
     </div>
-
+<div class="summary-cards">
+    <div class="stat-box stat-present">
+        มาเรียน: <span id="countPresent">0</span> คน 
+        <small>(<span id="percentPresent">0</span>%)</small>
+    </div>
+    <div class="stat-box stat-late">
+        มาสาย: <span id="countLate">0</span> คน 
+        <small>(<span id="percentLate">0</span>%)</small>
+    </div>
+    <div class="stat-box stat-absent">
+        ขาด/ลา: <span id="countAbsent">0</span> คน 
+        <small>(<span id="percentAbsent">0</span>%)</small>
+    </div>
+</div>
 <script>
     const allStudentsData = {{ all_students | tojson }};
 
@@ -155,26 +168,42 @@
 
     // คำนวณสรุปยอดประจำวันแบบ Real-time
     function calculateStats() {
-        const rows = document.querySelectorAll('#studentTableBody tr');
-        let present = 0, late = 0, absent = 0;
+    const rows = document.querySelectorAll('#studentTableBody tr');
+    const totalStudents = rows.length;
+    let present = 0, late = 0, absent = 0;
 
-        rows.forEach((row, i) => {
-            const status = document.querySelector(`input[name="status_${i}"]:checked`);
-            if (status) {
-                if (status.value === 'มา') present++;
-                else if (status.value === 'สาย') late++;
-                else if (status.value === 'ขาด') absent++;
-            }
-        });
-
-        updateSummary(present, late, absent);
+    if (totalStudents === 0) {
+        updateSummary(0, 0, 0, 0);
+        return;
     }
 
-    function updateSummary(present, late, absent) {
-        document.getElementById('countPresent').textContent = present;
-        document.getElementById('countLate').textContent = late;
-        document.getElementById('countAbsent').textContent = absent;
-    }
+    rows.forEach((row, i) => {
+        const status = document.querySelector(`input[name="status_${i}"]:checked`);
+        if (status) {
+            if (status.value === 'มา') present++;
+            else if (status.value === 'สาย') late++;
+            else if (status.value === 'ขาด') absent++;
+        }
+    });
+
+    updateSummary(present, late, absent, totalStudents);
+}
+function updateSummary(present, late, absent, total) {
+    // คำนวณ % (ปัดเศษทศนิยม 1 ตำแหน่ง)
+    const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+    const pLate = total > 0 ? ((late / total) * 100).toFixed(1) : 0;
+    const pAbsent = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
+
+    // อัปเดตจำนวนคน
+    document.getElementById('countPresent').textContent = present;
+    document.getElementById('countLate').textContent = late;
+    document.getElementById('countAbsent').textContent = absent;
+
+    // อัปเดต %
+    document.getElementById('percentPresent').textContent = pPresent;
+    document.getElementById('percentLate').textContent = pLate;
+    document.getElementById('percentAbsent').textContent = pAbsent;
+}
 
     function saveAttendance() {
         const selectedDate = document.getElementById('dateSelect').value;
