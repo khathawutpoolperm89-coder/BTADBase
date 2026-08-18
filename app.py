@@ -182,15 +182,27 @@ def teacher_dashboard():
 
     records = get_student_data()
     classes = set()
+    all_students = []
     
     if records and isinstance(records, list):
         for row in records:
+            student_class = ""
+            student_name = ""
             for k, v in row.items():
                 if 'class' in str(k).lower() and v:
-                    classes.add(str(v).strip())
+                    student_class = str(v).strip()
+                    classes.add(student_class)
+                if 'fullname' in str(k).lower() or 'name' in str(k).lower():
+                    student_name = str(v).strip()
+            
+            if student_class and student_name:
+                all_students.append({
+                    "class": student_class,
+                    "name": student_name
+                })
 
     sorted_classes = sorted(list(classes))
-    return render_template('teacher_dashboard.html', classes=sorted_classes)
+    return render_template('teacher_dashboard.html', classes=sorted_classes, all_students=all_students)
 
 @app.route('/logout')
 def logout():

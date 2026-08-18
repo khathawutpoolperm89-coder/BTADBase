@@ -3,37 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - ระบบสำหรับอาจารย์</title>
+    <title>Teacher Dashboard</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        
-        .navbar { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: #ffffff; padding: 15px 25px; border-radius: 12px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; 
-        }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .navbar h2 { margin: 0; color: #007bff; }
         .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; }
-
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
-        .filter-section { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
         select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px; min-width: 200px; }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background-color: #f8f9fa; color: #555; }
-
-        /* Radio Status Selector */
         .status-group { display: flex; gap: 10px; }
         .status-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: 12px; font-weight: bold; }
         .status-present { background-color: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
         .status-late { background-color: #fff8e1; color: #f57f17; border-color: #ffe082; }
         .status-absent { background-color: #ffebee; color: #c62828; border-color: #ef9a9a; }
-
         .btn-save { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; float: right; margin-top: 15px; }
-        .btn-save:hover { background: #0056b3; }
     </style>
 </head>
 <body>
@@ -46,11 +33,10 @@
         </div>
     </div>
 
-    <!-- ส่วนเลือกห้องเรียน -->
     <div class="card">
-        <div class="filter-section">
+        <div style="display: flex; gap: 15px; align-items: center;">
             <label for="classSelect"><strong>เลือกห้องเรียนที่ต้องการจัดการ:</strong></label>
-            <select id="classSelect" onchange="loadStudents()">
+            <select id="classSelect" onchange="renderStudents()">
                 <option value="">-- กรุณาเลือกชั้นเรียน --</option>
                 {% for c in classes %}
                     <option value="{{ c }}">{{ c }}</option>
@@ -59,7 +45,6 @@
         </div>
     </div>
 
-    <!-- รายชื่อนักเรียนสำหรับเช็คชื่อ -->
     <div class="card" id="studentCard" style="display: none;">
         <h3 id="classTitle">รายชื่อนักเรียน</h3>
         <table>
@@ -70,16 +55,17 @@
                     <th style="width: 50%;">สถานะการเข้าเรียนวันนี้</th>
                 </tr>
             </thead>
-            <tbody id="studentTableBody">
-                <!-- รายชื่อจะถูกเติมผ่าน JavaScript -->
-            </tbody>
+            <tbody id="studentTableBody"></tbody>
         </table>
         <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อ</button>
         <div style="clear: both;"></div>
     </div>
 
 <script>
-    function loadStudents() {
+    // 🚀 ฝังข้อมูลนักเรียนทั้งหมดจาก Flask ไว้ใน JavaScript ล่วงหน้า
+    const allStudentsData = {{ all_students | tojson }};
+
+    function renderStudents() {
         const selectedClass = document.getElementById('classSelect').value;
         const studentCard = document.getElementById('studentCard');
         const tbody = document.getElementById('studentTableBody');
@@ -90,43 +76,37 @@
         }
 
         document.getElementById('classTitle').textContent = `รายชื่อนักเรียนชั้น ${selectedClass}`;
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+        tbody.innerHTML = '';
         studentCard.style.display = 'block';
 
-        fetch('/get_students_by_class', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ class_name: selectedClass })
-        })
-        .then(res => res.json())
-        .then(data => {
-            tbody.innerHTML = '';
-            if (data.students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">ไม่พบนักเรียนในห้องนี้</td></tr>';
-                return;
-            }
+        // ⚡ กรองข้อมูลบนเครื่องของผู้ใช้ทันที (ไม่ต้องรอ Fetch)
+        const filtered = allStudentsData.filter(s => s.class === selectedClass);
 
-            data.students.forEach((student, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td><strong>${student}</strong></td>
-                    <td>
-                        <div class="status-group">
-                            <label class="status-btn status-present">
-                                <input type="radio" name="status_${index}" value="มา" checked> มา
-                            </label>
-                            <label class="status-btn status-late">
-                                <input type="radio" name="status_${index}" value="สาย"> สาย
-                            </label>
-                            <label class="status-btn status-absent">
-                                <input type="radio" name="status_${index}" value="ขาด"> ขาด/ลา
-                            </label>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">ไม่พบนักเรียนในห้องนี้</td></tr>';
+            return;
+        }
+
+        filtered.forEach((student, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td><strong>${student.name}</strong></td>
+                <td>
+                    <div class="status-group">
+                        <label class="status-btn status-present">
+                            <input type="radio" name="status_${index}" value="มา" checked> มา
+                        </label>
+                        <label class="status-btn status-late">
+                            <input type="radio" name="status_${index}" value="สาย"> สาย
+                        </label>
+                        <label class="status-btn status-absent">
+                            <input type="radio" name="status_${index}" value="ขาด"> ขาด/ลา
+                        </label>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     }
 
