@@ -3,30 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - ตรวจสอบย้อนหลัง</title>
+    <title>Teacher Dashboard - ระบบสำหรับอาจารย์</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         
+        /* Navbar */
         .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .navbar h2 { margin: 0; color: #007bff; }
-        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; }
+        .btn-report { background: #28a745; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-left: 15px; }
+        .btn-logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; margin-left: 10px; }
 
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
-        /* Bar เลือกห้องและวันที่ */
+        /* Filter Bar */
         .filter-bar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
         .form-control { display: flex; flex-direction: column; gap: 5px; }
         .form-control label { font-weight: bold; font-size: 14px; }
         select, input[type="date"] { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
 
         /* สรุปยอดประจำวัน */
-        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 15px; }
-        .stat-box { padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-box { padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 15px; }
         .stat-present { background: #e8f5e9; color: #2e7d32; }
         .stat-late { background: #fff8e1; color: #f57f17; }
         .stat-absent { background: #ffebee; color: #c62828; }
 
+        /* Table */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background-color: #f8f9fa; color: #555; }
@@ -42,36 +45,17 @@
 </head>
 <body>
 
+    <!-- 1. Header Navbar (อันเดียว) -->
     <div class="navbar">
         <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
         <div>
             <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
-            <a href="/logout" class="logout-btn" style="margin-left: 15px;">ออกจากระบบ</a>
+            <a href="/report" class="btn-report">📊 ดูรายงานภาพรวม</a>
+            <a href="/logout" class="btn-logout">ออกจากระบบ</a>
         </div>
     </div>
-<div class="summary-cards">
-    <div class="stat-box stat-present">
-        มาเรียน: <span id="countPresent">0</span> คน 
-        <small>(<span id="percentPresent">0</span>%)</small>
-    </div>
-    <div class="stat-box stat-late">
-        มาสาย: <span id="countLate">0</span> คน 
-        <small>(<span id="percentLate">0</span>%)</small>
-    </div>
-    <div class="stat-box stat-absent">
-        ขาด/ลา: <span id="countAbsent">0</span> คน 
-        <small>(<span id="percentAbsent">0</span>%)</small>
-    </div>
-</div>
-<div class="navbar">
-    <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
-    <div>
-        <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
-        <a href="/report" style="background:#28a745; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:bold; margin-left:15px;">📊 ดูรายงานภาพรวม</a>
-        <a href="/logout" class="logout-btn" style="margin-left: 10px;">ออกจากระบบ</a>
-    </div>
-</div>
-    <!-- เมนูตัวกรอง: ห้องเรียน + เลือกวันที่ย้อนหลัง -->
+
+    <!-- 2. ตัวกรองเลือกห้องและวันที่ -->
     <div class="card">
         <div class="filter-bar">
             <div class="form-control">
@@ -91,15 +75,24 @@
         </div>
     </div>
 
-    <!-- ตารางบันทึก/ดูย้อนหลัง -->
+    <!-- 3. ส่วนตารางเช็คชื่อและกล่องสรุปยอด -->
     <div class="card" id="studentCard" style="display: none;">
-        <h3 id="classTitle">รายชื่อนักเรียน</h3>
+        <h3 id="classTitle">เช็คชื่อนักเรียน</h3>
         
-        <!-- กล่องสรุปยอดประจำวัน -->
+        <!-- กล่องสรุปยอดประจำวัน (แสดงเฉพาะเมื่อเลือกห้องแล้ว) -->
         <div class="summary-cards">
-            <div class="stat-box stat-present">มาเรียน: <span id="countPresent">0</span> คน</div>
-            <div class="stat-box stat-late">มาสาย: <span id="countLate">0</span> คน</div>
-            <div class="stat-box stat-absent">ขาด/ลา: <span id="countAbsent">0</span> คน</div>
+            <div class="stat-box stat-present">
+                มาเรียน: <span id="countPresent">0</span> คน 
+                (<span id="percentPresent">0</span>%)
+            </div>
+            <div class="stat-box stat-late">
+                มาสาย: <span id="countLate">0</span> คน 
+                (<span id="percentLate">0</span>%)
+            </div>
+            <div class="stat-box stat-absent">
+                ขาด/ลา: <span id="countAbsent">0</span> คน 
+                (<span id="percentAbsent">0</span>%)
+            </div>
         </div>
 
         <table>
@@ -120,7 +113,6 @@
 <script>
     const allStudentsData = {{ all_students | tojson }};
 
-    // ตั้งค่าวันที่เริ่มต้นในปฏิทินให้เป็น "วันนี้" อัตโนมัติ
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('dateSelect').valueAsDate = new Date();
     });
@@ -140,12 +132,11 @@
         tbody.innerHTML = '';
         studentCard.style.display = 'block';
 
-        // กรองนักเรียนตามห้อง
         const filtered = allStudentsData.filter(s => s.class === selectedClass);
 
         if (filtered.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">ไม่พบนักเรียนในห้องนี้</td></tr>';
-            updateSummary(0, 0, 0);
+            updateSummary(0, 0, 0, 0);
             return;
         }
 
@@ -174,44 +165,36 @@
         calculateStats();
     }
 
-    // คำนวณสรุปยอดประจำวันแบบ Real-time
     function calculateStats() {
-    const rows = document.querySelectorAll('#studentTableBody tr');
-    const totalStudents = rows.length;
-    let present = 0, late = 0, absent = 0;
+        const rows = document.querySelectorAll('#studentTableBody tr');
+        const total = rows.length;
+        let present = 0, late = 0, absent = 0;
 
-    if (totalStudents === 0) {
-        updateSummary(0, 0, 0, 0);
-        return;
+        rows.forEach((row, i) => {
+            const status = document.querySelector(`input[name="status_${i}"]:checked`);
+            if (status) {
+                if (status.value === 'มา') present++;
+                else if (status.value === 'สาย') late++;
+                else if (status.value === 'ขาด') absent++;
+            }
+        });
+
+        updateSummary(present, late, absent, total);
     }
 
-    rows.forEach((row, i) => {
-        const status = document.querySelector(`input[name="status_${i}"]:checked`);
-        if (status) {
-            if (status.value === 'มา') present++;
-            else if (status.value === 'สาย') late++;
-            else if (status.value === 'ขาด') absent++;
-        }
-    });
+    function updateSummary(present, late, absent, total) {
+        const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+        const pLate = total > 0 ? ((late / total) * 100).toFixed(1) : 0;
+        const pAbsent = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
 
-    updateSummary(present, late, absent, totalStudents);
-}
-function updateSummary(present, late, absent, total) {
-    // คำนวณ % (ปัดเศษทศนิยม 1 ตำแหน่ง)
-    const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
-    const pLate = total > 0 ? ((late / total) * 100).toFixed(1) : 0;
-    const pAbsent = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
+        document.getElementById('countPresent').textContent = present;
+        document.getElementById('countLate').textContent = late;
+        document.getElementById('countAbsent').textContent = absent;
 
-    // อัปเดตจำนวนคน
-    document.getElementById('countPresent').textContent = present;
-    document.getElementById('countLate').textContent = late;
-    document.getElementById('countAbsent').textContent = absent;
-
-    // อัปเดต %
-    document.getElementById('percentPresent').textContent = pPresent;
-    document.getElementById('percentLate').textContent = pLate;
-    document.getElementById('percentAbsent').textContent = pAbsent;
-}
+        document.getElementById('percentPresent').textContent = pPresent;
+        document.getElementById('percentLate').textContent = pLate;
+        document.getElementById('percentAbsent').textContent = pAbsent;
+    }
 
     function saveAttendance() {
         const selectedDate = document.getElementById('dateSelect').value;
