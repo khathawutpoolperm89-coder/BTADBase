@@ -216,59 +216,41 @@
     }
 
     function saveAttendance() {
-    // 1. แสดง UI วงแหวนหมุนสวยๆ ระหว่างรอระบบบันทึก
     Swal.fire({
         title: 'กำลังบันทึกข้อมูล...',
-        text: 'กรุณารอสักครู่ ระบบกำลังส่งข้อมูลไปยัง Google Sheets',
+        text: 'กำลังส่งข้อมูลไปยัง Google Sheets',
         allowOutsideClick: false,
         showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading(); // เปิดวงแหวนหมุน (Spinner)
-        }
+        didOpen: () => { Swal.showLoading(); }
     });
 
-    // เตรียมข้อมูลส่งไปยัง Flask API
     const payload = {
+        action: "saveAttendance",
         date: document.getElementById('attendanceDate').value,
         class: document.getElementById('classSelect').value,
-        records: getAttendanceRecords() // ฟังก์ชันดึงค่าสถานะเช็คชื่อของคุณ
+        records: getAttendanceRecords()
     };
 
-    // 2. ส่งข้อมูลไปที่ Backend
-    fetch('/save_attendance', {
+    // ⚡ ยิงตรงหา Apps Script URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
+
+    fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors', // ยิงแบบไม่รอ Response ป้องกันปัญหา CORS และได้ความเร็วระดับมิลลิวินาที
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            // 3. แสดง Modal สำเร็จพร้อมไอคอนติ๊กถูกแอนิเมชัน
-            Swal.fire({
-                icon: 'success',
-                title: 'บันทึกสำเร็จ!',
-                text: data.message,
-                confirmButtonColor: '#28a745',
-                confirmButtonText: 'ตกลง'
-            });
-        } else {
-            // แสดงข้อผิดพลาด
-            Swal.fire({
-                icon: 'error',
-                title: 'เกิดข้อผิดพลาด',
-                text: data.message || 'ไม่สามารถบันทึกข้อมูลได้',
-                confirmButtonColor: '#dc3545'
-            });
-        }
+    .then(() => {
+        // แสดงผลสำเร็จทันที
+        Swal.fire({
+            icon: 'success',
+            title: 'บันทึกเรียบร้อย!',
+            timer: 1500,
+            showConfirmButton: false
+        });
     })
     .catch(err => {
-        console.error("Save error:", err);
-        Swal.fire({
-            icon: 'error',
-            title: 'เชื่อมต่อล้มเหลว',
-            text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง',
-            confirmButtonColor: '#dc3545'
-        });
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
     });
 }
 </script>
