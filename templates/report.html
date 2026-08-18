@@ -115,55 +115,48 @@
     });
 
     function generateReport() {
-    const selectedClass = document.getElementById('classSelect').value;
-    const selectedDate = document.getElementById('dateSelect').value;
-    const tbody = document.getElementById('reportTableBody');
+  const selectedClass = document.getElementById('classSelect').value;
+  const selectedDate = document.getElementById('dateSelect').value;
+  const tbody = document.getElementById('reportTableBody');
 
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังดึงข้อมูลจาก Google Sheets...</td></tr>';
 
-    // ดึงข้อมูลจริงจาก API
-    fetch(`/get_attendance_report?date=${selectedDate}&class=${selectedClass}`)
+  fetch(`/api/get_report_data?date=${selectedDate}&class=${selectedClass}`)
     .then(res => res.json())
     .then(res => {
-        const attendanceData = res.data || [];
-        tbody.innerHTML = '';
+      const records = res.data || [];
+      tbody.innerHTML = '';
 
-        if (attendanceData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ยังไม่มีการบันทึกข้อมูลในวันนี้</td></tr>';
-            updateCards(0, 0, 0, 0);
-            return;
-        }
+      if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลบันทึกในวันที่เลือก</td></tr>';
+        updateCards(0, 0, 0, 0);
+        return;
+      }
 
-        let presentCount = 0, lateCount = 0, absentCount = 0;
+      let present = 0, late = 0, absent = 0;
 
-        attendanceData.forEach((student, index) => {
-            if (student.status === 'มา') presentCount++;
-            else if (student.status === 'สาย') lateCount++;
-            else absentCount++;
+      records.forEach((student, index) => {
+        if (student.status === 'มา') present++;
+        else if (student.status === 'สาย') late++;
+        else absent++;
 
-            let badgeClass = 'badge-present';
-            if (student.status === 'สาย') badgeClass = 'badge-late';
-            if (student.status === 'ขาด') badgeClass = 'badge-absent';
+        let badgeClass = student.status === 'มา' ? 'badge-present' : (student.status === 'สาย' ? 'badge-late' : 'badge-absent');
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class}</span></td>
-                <td><strong>${student.name}</strong></td>
-                <td><span class="badge ${badgeClass}">${student.status}</span></td>
-                <td><span style="color: #666; font-size: 13px;">🕒 ${student.time || '-'}</span></td>
-                <td>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="progress-bg"><div class="progress-bar" style="width: ${student.rate}%;"></div></div>
-                        <span style="font-size:12px; font-weight:bold;">${student.rate}%</span>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td><span class="badge" style="background:#e9ecef; color:#333;">${student.class}</span></td>
+          <td><strong>${student.name}</strong></td>
+          <td><span class="badge ${badgeClass}">${student.status}</span></td>
+          <td><span style="color: #666; font-size: 13px;">🕒 ${student.time}</span></td>
+          <td><span style="font-size:12px; font-weight:bold;">100%</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-        updateCards(attendanceData.length, presentCount, lateCount, absentCount);
+      updateCards(records.length, present, late, absent);
     });
+
 }
     function updateCards(total, present, late, absent) {
         document.getElementById('totalCount').textContent = `${total} คน`;

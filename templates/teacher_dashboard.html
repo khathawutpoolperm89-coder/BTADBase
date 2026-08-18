@@ -34,18 +34,30 @@
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background-color: #f8f9fa; color: #555; }
 
-        .status-group { display: flex; gap: 10px; }
-        .status-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .btn-present { background-color: #e8f5e9; color: #2e7d32; }
-        .btn-late { background-color: #fff8e1; color: #f57f17; }
-        .btn-absent { background-color: #ffebee; color: #c62828; }
+        /* Button Status Styles */
+        .status-group { display: flex; gap: 8px; }
+        .btn-status { 
+            padding: 6px 14px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            background-color: #f8f9fa; 
+            color: #555; 
+            cursor: pointer; 
+            font-size: 13px; 
+            font-weight: bold; 
+            transition: all 0.2s ease;
+        }
+        .btn-status.active-present { background-color: #28a745; color: white; border-color: #28a745; }
+        .btn-status.active-late { background-color: #ffc107; color: #333; border-color: #ffc107; }
+        .btn-status.active-absent { background-color: #dc3545; color: white; border-color: #dc3545; }
 
         .btn-save { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; float: right; margin-top: 15px; }
+        .btn-save:hover { background: #0056b3; }
     </style>
 </head>
 <body>
 
-    <!-- 1. Header Navbar (อันเดียว) -->
+    <!-- Header Navbar -->
     <div class="navbar">
         <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
         <div>
@@ -55,7 +67,7 @@
         </div>
     </div>
 
-    <!-- 2. ตัวกรองเลือกห้องและวันที่ -->
+    <!-- ตัวกรองเลือกห้องและวันที่ -->
     <div class="card">
         <div class="filter-bar">
             <div class="form-control">
@@ -75,11 +87,11 @@
         </div>
     </div>
 
-    <!-- 3. ส่วนตารางเช็คชื่อและกล่องสรุปยอด -->
+    <!-- ส่วนตารางเช็คชื่อและกล่องสรุปยอด -->
     <div class="card" id="studentCard" style="display: none;">
         <h3 id="classTitle">เช็คชื่อนักเรียน</h3>
         
-        <!-- กล่องสรุปยอดประจำวัน (แสดงเฉพาะเมื่อเลือกห้องแล้ว) -->
+        <!-- กล่องสรุปยอดประจำวัน -->
         <div class="summary-cards">
             <div class="stat-box stat-present">
                 มาเรียน: <span id="countPresent">0</span> คน 
@@ -106,7 +118,7 @@
             <tbody id="studentTableBody"></tbody>
         </table>
         
-        <button class="btn-save" onclick="saveAttendance()">บันทึกการเช็คชื่อวันที่เลือก</button>
+        <button class="btn-save" onclick="saveAttendance()">💾 บันทึกการเช็คชื่อลง Google Sheets</button>
         <div style="clear: both;"></div>
     </div>
 
@@ -146,16 +158,10 @@
                 <td>${index + 1}</td>
                 <td><strong>${student.name}</strong></td>
                 <td>
-                    <div class="status-group">
-                        <label class="status-btn btn-present">
-                            <input type="radio" name="status_${index}" value="มา" checked onchange="calculateStats()"> มา
-                        </label>
-                        <label class="status-btn btn-late">
-                            <input type="radio" name="status_${index}" value="สาย" onchange="calculateStats()"> สาย
-                        </label>
-                        <label class="status-btn btn-absent">
-                            <input type="radio" name="status_${index}" value="ขาด" onchange="calculateStats()"> ขาด/ลา
-                        </label>
+                    <div class="status-group" data-selected="มา">
+                        <button type="button" class="btn-status active-present" onclick="selectStatus(this, 'มา')">มา</button>
+                        <button type="button" class="btn-status" onclick="selectStatus(this, 'สาย')">สาย</button>
+                        <button type="button" class="btn-status" onclick="selectStatus(this, 'ขาด')">ขาด/ลา</button>
                     </div>
                 </td>
             `;
@@ -165,69 +171,34 @@
         calculateStats();
     }
 
+    function selectStatus(btn, status) {
+        const group = btn.closest('.status-group');
+        group.querySelectorAll('.btn-status').forEach(b => {
+            b.classList.remove('active-present', 'active-late', 'active-absent');
+        });
+
+        if (status === 'มา') btn.classList.add('active-present');
+        else if (status === 'สาย') btn.classList.add('active-late');
+        else if (status === 'ขาด') btn.classList.add('active-absent');
+
+        group.setAttribute('data-selected', status);
+        calculateStats();
+    }
+
     function calculateStats() {
-        const rows = document.querySelectorAll('#studentTableBody tr');
-        const total = rows.length;
+        const groups = document.querySelectorAll('.status-group');
+        const total = groups.length;
         let present = 0, late = 0, absent = 0;
 
-        rows.forEach((row, i) => {
-            const status = document.querySelector(`input[name="status_${i}"]:checked`);
-            if (status) {
-                if (status.value === 'มา') present++;
-                else if (status.value === 'สาย') late++;
-                else if (status.value === 'ขาด') absent++;
-            }
+        groups.forEach(group => {
+            const status = group.getAttribute('data-selected') || 'มา';
+            if (status === 'มา') present++;
+            else if (status === 'สาย') late++;
+            else if (status === 'ขาด') absent++;
         });
 
         updateSummary(present, late, absent, total);
     }
-    function saveAttendance() {
-    const selectedClass = document.getElementById('classSelect').value;
-    const selectedDate = document.getElementById('dateSelect').value;
-    const rows = document.querySelectorAll('#studentTableBody tr');
-    
-    if (!selectedClass || !selectedDate) {
-        alert('กรุณาเลือกชั้นเรียนและวันที่ก่อนบันทึก');
-        return;
-    }
-
-    const records = [];
-    const currentTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-
-    rows.forEach((row, index) => {
-        const studentName = row.cells[1].innerText.trim();
-        const statusInput = document.querySelector(`input[name="status_${index}"]:checked`);
-        const status = statusInput ? statusInput.value : 'มา';
-
-        records.push({
-            name: studentName,
-            status: status,
-            time: status === 'ขาด' ? '-' : currentTime
-        });
-    });
-
-    // ยิง API บันทึกข้อมูลลง Backend
-    fetch('/save_attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            class: selectedClass,
-            date: selectedDate,
-            records: records
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('🟢 ' + data.message);
-        } else {
-            alert('🔴 เกิดข้อผิดพลาด: ' + data.message);
-        }
-    })
-    .catch(err => {
-        alert('🔴 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-    });
-}
 
     function updateSummary(present, late, absent, total) {
         const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
@@ -244,8 +215,50 @@
     }
 
     function saveAttendance() {
+        const selectedClass = document.getElementById('classSelect').value;
         const selectedDate = document.getElementById('dateSelect').value;
-        alert(`บันทึกข้อมูลการเข้าเรียนประจำวันที่ ${selectedDate} เรียบร้อยแล้ว!`);
+        const rows = document.querySelectorAll('#studentTableBody tr');
+        
+        if (!selectedClass || !selectedDate) {
+            alert('กรุณาเลือกชั้นเรียนและวันที่ก่อนบันทึก');
+            return;
+        }
+
+        const records = [];
+        const currentTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+        rows.forEach(row => {
+            const studentName = row.cells[1].innerText.trim();
+            const group = row.querySelector('.status-group');
+            const status = group ? group.getAttribute('data-selected') : 'มา';
+
+            records.push({
+                name: studentName,
+                status: status,
+                time: status === 'ขาด' ? '-' : currentTime
+            });
+        });
+
+        fetch('/save_attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                class: selectedClass,
+                date: selectedDate,
+                records: records
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('🟢 ' + data.message);
+            } else {
+                alert('🔴 เกิดข้อผิดพลาด: ' + data.message);
+            }
+        })
+        .catch(err => {
+            alert('🔴 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        });
     }
 </script>
 

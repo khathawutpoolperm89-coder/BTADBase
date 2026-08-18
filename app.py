@@ -16,6 +16,8 @@ def get_student_data():
     except Exception as e:
         print("Error fetching data:", e)
         return []
+
+# 🟢 [แก้ไข] บันทึกข้อมูลการเช็คชื่อลง Google Sheets ผ่าน Google Apps Script
 @app.route('/save_attendance', methods=['POST'])
 def save_attendance():
     if 'fullname' not in session:
@@ -24,38 +26,61 @@ def save_attendance():
     data = request.get_json()
     attendance_date = data.get('date')
     selected_class = data.get('class')
-    records = data.get('records') # รายการ [{ name, status, time }, ...]
+    records = data.get('records', [])
 
     try:
-        # 🟢 เพิ่มโค้ดเขียนข้อมูลลง Google Sheets หรือ Database ของคุณตรงนี้
-        # ตัวอย่างโครงสร้างข้อมูลที่จะบันทึก:
-        # for item in records:
-        #     db.save(date=attendance_date, class=selected_class, name=item['name'], status=item['status'], time=item['time'])
+        # ส่งข้อมูลไปยัง Google Apps Script
+        payload = {
+            "action": "saveAttendance",
+            "date": attendance_date,
+            "class": selected_class,
+            "records": records
+        }
         
-        print(f"บันทึกสำเร็จ: ห้อง {selected_class} วันที่ {attendance_date} จำนวน {len(records)} คน")
-        return jsonify({"success": True, "message": "บันทึกข้อมูลเรียบร้อยแล้ว!"})
+        response = requests.post(APPS_SCRIPT_URL, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify({"success": True, "message": f"บันทึกข้อมูลห้อง {selected_class} เรียบร้อยแล้ว!"})
+        else:
+            return jsonify({"success": False, "message": "ไม่สามารถส่งข้อมูลไปยัง Google Sheets ได้"}), 500
+
     except Exception as e:
+        print("Save attendance error:", e)
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 2. หน้า Report ที่ดึงประวัติจริงมาแสดง
+# 🟢 [แก้ไข] ดึงประวัติรายงานจาก Google Sheets ตามวันที่และชั้นเรียน
 @app.route('/get_attendance_report', methods=['GET'])
 def get_attendance_report():
     selected_date = request.args.get('date')
     selected_class = request.args.get('class', '')
 
-    # 🟢 ดึงข้อมูลจาก Google Sheets / Database ตามวันที่และห้องเรียน
-    # actual_data = db.fetch_attendance(date=selected_date, class=selected_class)
-    
-    # ส่งข้อมูลจริงกลับไปที่ Client
-    return jsonify({
-        "success": True,
-        "data": [] # ใส่ข้อมูลจริงที่อ่านได้จาก Sheet/DB
-    })
+    try:
+        # ยิง GET ไปยัง Apps Script พร้อม parameter
+        params = {
+            "action": "getAttendance",
+            "date": selected_date,
+            "class": selected_class
+        }
+        response = requests.get(APPS_SCRIPT_URL, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            res_data = response.json()
+            return jsonify({
+                "success": True,
+                "data": res_data if isinstance(res_data, list) else []
+            })
+        
+        return jsonify({"success": False, "data": [], "message": "ไม่สามารถดึงข้อมูลได้"}), 500
+
+    except Exception as e:
+        print("Get report error:", e)
+        return jsonify({"success": False, "data": [], "message": str(e)}), 500
+
+
 @app.route('/')
 def login_page():
     if 'fullname' in session:
-        # แยก Redirect ตามบทบาทที่ล็อกอินค้างไว้
         if session.get('role') == 'admin':
             return redirect(url_for('admin_dashboard'))
         elif session.get('role') == 'teacher':
@@ -94,11 +119,9 @@ def login_staff():
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
 
-        # ดึงข้อมูล Staff ทั้งหมดจาก Google Sheets
         res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", allow_redirects=True)
         staff_list = res.json()
 
-        # ตรวจสอบ Username, Password และ Role
         user = next((s for s in staff_list if str(s['username']) == username and str(s['password']) == password and str(s['role']) == role), None)
 
         if user:
@@ -144,14 +167,12 @@ def login():
             
     return jsonify({"success": False, "message": "ไม่พบข้อมูล"})
 
-# 🔵 [เพิ่มใหม่] หน้า Admin Dashboard
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if session.get('role') != 'admin':
         return redirect(url_for('login_page'))
     return render_template('admin_dashboard.html')
 
-# 🔵 [เพิ่มใหม่] API ดึงรายชื่อ Staff ไปแสดงในตารางหน้า Admin
 @app.route('/get_staff_list')
 def get_staff_list():
     if session.get('role') != 'admin':
@@ -209,7 +230,7 @@ def dashboard():
         ]
     }
     return render_template('dashboard.html', data=student_data)
-# 🔵 หน้า Teacher Dashboard (ตรวจสอบสิทธิ์ต้องเป็น teacher เท่านั้น)
+
 @app.route('/teacher_dashboard')
 def teacher_dashboard():
     if session.get('role') != 'teacher':
@@ -238,7 +259,7 @@ def teacher_dashboard():
 
     sorted_classes = sorted(list(classes))
     return render_template('teacher_dashboard.html', classes=sorted_classes, all_students=all_students)
-# 🔵 หน้าสรุปรายงานการเข้าเรียน (Report Dashboard)
+
 @app.route('/report')
 def report():
     if 'fullname' not in session:
@@ -267,6 +288,7 @@ def report():
 
     sorted_classes = sorted(list(classes))
     return render_template('report.html', classes=sorted_classes, all_students=all_students)
+
 @app.route('/logout')
 def logout():
     session.clear()
