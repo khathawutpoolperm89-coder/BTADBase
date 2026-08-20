@@ -1,4 +1,5 @@
 import requests
+from urllib.parse import quote
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 app = Flask(__name__)
@@ -17,7 +18,7 @@ def get_student_data():
         print("Error fetching data:", e)
         return []
 
-# 🟢 [แก้ไข] บันทึกข้อมูลการเช็คชื่อลง Google Sheets ผ่าน Google Apps Script
+# 🟢 บันทึกข้อมูลการเช็คชื่อลง Google Sheets ผ่าน Google Apps Script
 @app.route('/save_attendance', methods=['POST'])
 def save_attendance():
     if 'fullname' not in session:
@@ -29,7 +30,6 @@ def save_attendance():
     records = data.get('records', [])
 
     try:
-        # ส่งข้อมูลไปยัง Google Apps Script
         payload = {
             "action": "saveAttendance",
             "date": attendance_date,
@@ -47,11 +47,6 @@ def save_attendance():
     except Exception as e:
         print("Save attendance error:", e)
         return jsonify({"success": False, "message": str(e)}), 500
-
-
-# 🟢 [แก้ไข] ดึงประวัติรายงานจาก Google Sheets ตามวันที่และชั้นเรียน
-# 🟢 แก้ไขชื่อ Route ให้ตรงกับหน้าเว็บ HTML
-
 
 @app.route('/')
 def login_page():
@@ -86,22 +81,32 @@ def login_page():
     sorted_classes = sorted(list(classes))
     return render_template('login.html', classes=sorted_classes, all_students=all_students)
 
+# 🟢 [แก้ไขจุดส่งผลต่อ Login Admin] ทำการยืดหยุ่นการตรวจจับ String และ Space
 @app.route('/login_staff', methods=['POST'])
 def login_staff():
     try:
-        data = request.json
-        role = data.get('role')
-        username = data.get('username', '').strip()
-        password = data.get('password', '').strip()
+        data = request.json or {}
+        role = str(data.get('role', '')).strip().lower()
+        username = str(data.get('username', '')).strip()
+        password = str(data.get('password', '')).strip()
 
-        res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", allow_redirects=True)
+        res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", allow_redirects=True, timeout=10)
         staff_list = res.json()
 
-        user = next((s for s in staff_list if str(s['username']) == username and str(s['password']) == password and str(s['role']) == role), None)
+        user = None
+        if isinstance(staff_list, list):
+            for s in staff_list:
+                s_user = str(s.get('username', '')).strip()
+                s_pass = str(s.get('password', '')).strip()
+                s_role = str(s.get('role', '')).strip().lower()
+
+                if s_user == username and s_pass == password and s_role == role:
+                    user = s
+                    break
 
         if user:
-            session['role'] = user['role']
-            session['fullname'] = user['fullname']
+            session['role'] = user.get('role')
+            session['fullname'] = user.get('fullname')
             
             redirect_url = '/admin_dashboard' if role == 'admin' else '/teacher_dashboard'
             return jsonify({"success": True, "redirect_url": redirect_url})
@@ -112,7 +117,7 @@ def login_staff():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.json
+    data = request.json or {}
     selected_name = data.get('fullname')
     entered_pin = data.get('pin')
     records = get_student_data()
@@ -152,7 +157,7 @@ def admin_dashboard():
 def get_staff_list():
     if session.get('role') != 'admin':
         return jsonify([])
-    res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff")
+    res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", timeout=10)
     return jsonify(res.json())
 
 @app.route('/create_teacher', methods=['POST'])
@@ -160,7 +165,7 @@ def create_teacher():
     if session.get('role') != 'admin':
         return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการดำเนินการนี้"}), 403
 
-    data = request.json
+    data = request.json or {}
     username = data.get('username')
     password = data.get('password')
     fullname = data.get('fullname')
@@ -174,7 +179,7 @@ def create_teacher():
         'password': password,
         'fullname': fullname
     }
-    requests.get(APPS_SCRIPT_URL, params=payload)
+    requests.get(APPS_SCRIPT_URL, params=payload, timeout=10)
 
     return jsonify({"success": True, "message": "สร้างบัญชีอาจารย์เรียบร้อยแล้ว!"})
 
@@ -263,12 +268,12 @@ def report():
 
     sorted_classes = sorted(list(classes))
     return render_template('report.html', classes=sorted_classes, all_students=all_students)
+
 @app.route('/api/get_report_data')
 def get_report_data():
     date_param = request.args.get('date', '')
     class_param = request.args.get('class', '')
     
-    # ส่งต่อ Parameter ไปยัง Web App URL ของ Google Apps Script
     url = f"{APPS_SCRIPT_URL}?action=getAttendance&date={date_param}&class={quote(class_param)}"
     
     try:
@@ -277,6 +282,7 @@ def get_report_data():
         return jsonify({"status": "success", "data": data})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
 @app.route('/logout')
 def logout():
     session.clear()

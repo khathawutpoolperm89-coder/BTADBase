@@ -17,30 +17,29 @@
             position: relative;
             overflow: hidden;
         }
-        /* สไตล์สำหรับหมุน Loading */
-.spinner {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: #fff;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-}
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
 
-/* ปรับลักษณะปุ่มขณะ Disable */
-.btn-login:disabled {
-    opacity: 0.75;
-    cursor: not-allowed;
-}
-        /* 🔵 Tab สลับประเภทผู้ใช้ */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-login:disabled, button:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+        }
+
         .role-tabs {
             display: flex;
             background: #f1f5f9;
@@ -66,7 +65,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
 
-        /* 🔵 CSS สำหรับฟอร์มอาจารย์ / แอดมิน */
         .form-group { text-align: left; margin-bottom: 15px; }
         .form-group label { font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; display: block; }
         .input-text { 
@@ -103,9 +101,9 @@
 
     <!-- 1. ปุ่ม Switch Tab เลือกบทบาท -->
     <div class="role-tabs">
-        <button class="tab-btn active" onclick="switchRole('student')">นักเรียน</button>
-        <button class="tab-btn" onclick="switchRole('teacher')">อาจารย์</button>
-        <button class="tab-btn" onclick="switchRole('admin')">แอดมิน</button>
+        <button class="tab-btn active" onclick="switchRole('student', event)">นักเรียน</button>
+        <button class="tab-btn" onclick="switchRole('teacher', event)">อาจารย์</button>
+        <button class="tab-btn" onclick="switchRole('admin', event)">แอดมิน</button>
     </div>
 
     <!-- 2. ฟอร์มสำหรับนักเรียน -->
@@ -148,75 +146,81 @@
             <input type="password" id="staffPassword" class="input-text" placeholder="กรอกรหัสผ่าน">
         </div>
 
-        <button class="submit-btn" onclick="submitStaffLogin()">เข้าสู่ระบบ</button>
+        <!-- 🟢 แก้ไข onclick ให้เรียก loginStaff() -->
+        <button id="staffSubmitBtn" class="submit-btn" onclick="loginStaff()">เข้าสู่ระบบ</button>
     </div>
 </div>
 
 <script>
     let currentRole = 'student';
-    const allStudentsData = {{ all_students | tojson }};
+    // 🟢 แก้ไขโดยเติม | safe ป้องกัน Syntax Error
+    const allStudentsData = {{ all_students | tojson | safe }};
 
-    // ฟังก์ชันสลับ Tab หน้าจอ
-    function switchRole(role) {
+    function switchRole(role, evt) {
         currentRole = role;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        if (evt) evt.target.classList.add('active');
         
         if (role === 'student') {
-            event.target.classList.add('active');
             document.getElementById('studentForm').style.display = 'block';
             document.getElementById('staffForm').style.display = 'none';
         } else {
-            event.target.classList.add('active');
             document.getElementById('studentForm').style.display = 'none';
             document.getElementById('staffForm').style.display = 'block';
             
             const title = document.getElementById('staffTitle');
+            const btn = document.getElementById('staffSubmitBtn');
             if (role === 'teacher') {
                 title.textContent = 'เข้าสู่ระบบอาจารย์';
                 title.style.color = '#007bff';
+                btn.style.backgroundColor = '#007bff';
             } else {
                 title.textContent = 'เข้าสู่ระบบแอดมิน';
-                title.style.color = '#dc3545'; // เปลี่ยนเป็นสีแดงสำหรับแอดมิน
+                title.style.color = '#dc3545';
+                btn.style.backgroundColor = '#dc3545';
             }
         }
     }
 
-    // ฟังก์ชันยิง Login สำหรับ อาจารย์/แอดมิน
-   function loginStaff(role) {
-    const btn = document.querySelector('#staffLoginForm button[type="submit"]') || document.activeElement;
-    const originalText = btn.innerHTML; // บันทึกข้อความเดิมบนปุ่ม (เช่น "เข้าสู่ระบบ")
+    // 🟢 ฟังก์ชันยิง Login สำหรับ อาจารย์/แอดมิน
+    function loginStaff() {
+        const btn = document.getElementById('staffSubmitBtn');
+        const originalText = btn.innerHTML;
 
-    // 🟢 แสดงสถานะหมุนและ Disable ปุ่มทันที
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner"></span> กำลังเข้าสู่ระบบ...`;
+        const username = document.getElementById('staffUsername').value.trim();
+        const password = document.getElementById('staffPassword').value.trim();
 
-    const username = document.getElementById('staffUsername').value;
-    const password = document.getElementById('staffPassword').value;
+        if (!username || !password) {
+            alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+            return;
+        }
 
-    fetch('/login_staff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: role, username: username, password: password })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = data.redirect_url;
-        } else {
-            alert(data.message);
-            // 🔴 รหัสผ่านผิด คืนค่าปุ่มเดิม
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> กำลังเข้าสู่ระบบ...`;
+
+        fetch('/login_staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: currentRole, username: username, password: password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert(data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
             btn.disabled = false;
             btn.innerHTML = originalText;
-        }
-    })
-    .catch(err => {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    });
-}
+        });
+    }
 
-    // --- สคริปต์เดิมของนักเรียน ---
     function loadStudentsByClass() {
         const selectedClass = document.getElementById('classSelect').value;
         const studentSelect = document.getElementById('studentSelect');
