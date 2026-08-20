@@ -129,7 +129,7 @@
             <input type="password" maxlength="1" class="pin-box" id="pin3" oninput="moveFocus(this, 'pin4')" onkeydown="checkBackspace(event, 'pin2')">
             <input type="password" maxlength="1" class="pin-box" id="pin4" oninput="moveFocus(this, null)" onkeydown="checkBackspace(event, 'pin3')">
         </div>
-        <button class="submit-btn" onclick="submitLogin()">เข้าสู่ระบบ</button>
+        <button id="studentSubmitBtn" class="submit-btn" onclick="submitLogin()">เข้าสู่ระบบ</button>
     </div>
 
     <!-- 3. ฟอร์มสำหรับอาจารย์ / แอดมิน -->
@@ -270,25 +270,47 @@
     }
 
     function submitLogin() {
-        const studentName = document.getElementById('studentSelect').value;
-        const fullPin = document.getElementById('pin1').value + document.getElementById('pin2').value + document.getElementById('pin3').value + document.getElementById('pin4').value;
+    const studentName = document.getElementById('studentSelect').value;
+    const fullPin = document.getElementById('pin1').value + 
+                    document.getElementById('pin2').value + 
+                    document.getElementById('pin3').value + 
+                    document.getElementById('pin4').value;
 
-        if (!studentName || fullPin.length < 4) {
-            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-            return;
-        }
-
-        fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullname: studentName, pin: fullPin })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) window.location.href = '/dashboard';
-            else alert(data.message);
-        });
+    if (!studentName || fullPin.length < 4) {
+        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+        return;
     }
+
+    const btn = document.getElementById('studentSubmitBtn');
+    const originalText = btn.innerHTML;
+
+    // เปลี่ยนเป็นสถานะ Loading
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> กำลังเข้าสู่ระบบ...`;
+
+    fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullname: studentName, pin: fullPin })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/dashboard';
+        } else {
+            alert(data.message);
+            // คืนค่าปุ่มเดิมเมื่อล็อกอินไม่สำเร็จ
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
 </script>
 
 </body>
