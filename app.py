@@ -47,7 +47,33 @@ def save_attendance():
     except Exception as e:
         print("Save attendance error:", e)
         return jsonify({"success": False, "message": str(e)}), 500
+@app.route('/save_media', methods=['POST'])
+def save_media():
+    try:
+        data = request.get_json()
+        payload = {
+            "action": "saveMedia",
+            "class_name": data.get("class_name"),
+            "subject": data.get("subject"),
+            "title": data.get("title"),
+            "video_url": data.get("video_url")
+        }
+        
+        # ส่งข้อมูลไปยัง Google Apps Script
+        response = requests.post(GOOGLE_SCRIPT_URL, json=payload)
+        return jsonify({"success": True, "message": "บันทึกสื่อเรียบร้อยแล้ว"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
+@app.route('/get_media', methods=['GET'])
+def get_media():
+    try:
+        class_name = request.args.get('class')
+        # ดึงข้อมูลสื่อตามชั้นเรียนจาก Google Apps Script
+        response = requests.get(f"{GOOGLE_SCRIPT_URL}?action=getMedia&class={class_name}")
+        return response.text, 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        return jsonify([]), 500
 @app.route('/')
 def login_page():
     if 'fullname' in session:
@@ -141,6 +167,11 @@ def login():
             session['role'] = 'student'
             session['fullname'] = selected_name
             session['student_id'] = student_id_val
+            
+            # 🟢 ดึงข้อมูลห้องเรียนจาก Object ของนักเรียนเก็บลง Session
+            student_room = student.get('Class') or student.get('room') or student.get('ชั้นเรียน') or '-'
+            session['student_room'] = student_room
+            
             return jsonify({"success": True, "message": "สำเร็จ"})
         else:
             return jsonify({"success": False, "message": "รหัสผ่านไม่ถูกต้อง"})

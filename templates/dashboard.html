@@ -33,7 +33,7 @@
     <div class="header">
         <div>
             <h2 style="margin: 0;">สวัสดี, {{ data.name }}</h2>
-            <p style="margin: 5px 0 0 0;">ห้อง: {{ data.room }}</p>
+            <p style="margin: 5px 0 0 0;">ห้อง: <strong>{{ data.room }}</strong></p>
         </div>
         <a href="/logout" class="logout-btn">ออกจากระบบ</a>
     </div>
@@ -42,9 +42,16 @@
     <div class="highlight-box">
         <h4>⚡ คาบเรียนต่อไปของคุณ:</h4>
         <p style="margin: 0; font-size: 18px;">
-            <strong>{{ data.next_class.subject }}</strong> <br>
-            เวลา: {{ data.next_class.time }} | ห้อง: {{ data.next_class.room }}
+            <strong>{{ data.next_class.subject if data.next_class else 'ไม่มีคาบเรียน' }}</strong> <br>
+            เวลา: {{ data.next_class.time if data.next_class else '-' }} | ห้อง: {{ data.next_class.room if data.next_class else '-' }}
         </p>
+    </div>
+
+    <!-- Widget แสดงวิชาปัจจุบันและนับถอยหลัง -->
+    <div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+        <h3 style="margin: 0; color: #2b6cb0;">สถานะการเรียนขณะนี้</h3>
+        <p id="currentSubjectText" style="font-size: 18px; font-weight: bold; color: #2d3748; margin: 8px 0;">กำลังโหลดข้อมูล...</p>
+        <div id="countdownBox" style="font-size: 14px; color: #e53e3e; font-weight: bold;"></div>
     </div>
 
     <div class="dashboard-grid">
@@ -57,13 +64,17 @@
                     <th>เวลา</th>
                     <th>วิชา</th>
                 </tr>
-                {% for item in data.today_schedule %}
-                <tr>
-                    <td>{{ item.period }}</td>
-                    <td>{{ item.time }}</td>
-                    <td>{{ item.subject }}</td>
-                </tr>
-                {% endfor %}
+                {% if data.today_schedule %}
+                    {% for item in data.today_schedule %}
+                    <tr>
+                        <td>{{ item.period }}</td>
+                        <td>{{ item.time }}</td>
+                        <td>{{ item.subject }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="3">ไม่มีตารางเรียนวันนี้</td></tr>
+                {% endif %}
             </table>
         </div>
 
@@ -72,13 +83,17 @@
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📝 งานค้างส่ง</h3>
                 <ul style="padding-left: 20px; margin-top: 10px;">
-                    {% for hw in data.assignments %}
-                        <li style="margin-bottom: 10px;">
-                            {{ hw.task }} <br>
-                            <small style="color: gray;">กำหนดส่ง: {{ hw.due }}</small>
-                            <span class="badge">{{ hw.status }}</span>
-                        </li>
-                    {% endfor %}
+                    {% if data.assignments %}
+                        {% for hw in data.assignments %}
+                            <li style="margin-bottom: 10px;">
+                                {{ hw.task }} <br>
+                                <small style="color: gray;">กำหนดส่ง: {{ hw.due }}</small>
+                                <span class="badge">{{ hw.status }}</span>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li>ไม่มีงานค้างส่ง</li>
+                    {% endif %}
                 </ul>
             </div>
 
@@ -89,31 +104,74 @@
                         <th>วิชา</th>
                         <th>เกรด</th>
                     </tr>
-                    {% for g in data.grades %}
-                    <tr>
-                        <td style="text-align: left;">{{ g.subject }}</td>
-                        <td><strong>{{ g.grade }}</strong></td>
-                    </tr>
-                    {% endfor %}
+                    {% if data.grades %}
+                        {% for g in data.grades %}
+                        <tr>
+                            <td style="text-align: left;">{{ g.subject }}</td>
+                            <td><strong>{{ g.grade }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">ไม่มีข้อมูลเกรด</td></tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
     </div>
-</div><!-- Widget แสดงวิชาปัจจุบันและนับถอยหลัง -->
-<div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
-    <h3 style="margin: 0; color: #2b6cb0;">สถานะการเรียนขณะนี้</h3>
-    <p id="currentSubjectText" style="font-size: 18px; font-weight: bold; color: #2d3748; margin: 8px 0;">กำลังโหลดข้อมูล...</p>
-    <div id="countdownBox" style="font-size: 14px; color: #e53e3e; font-weight: bold;"></div>
-</div>
-<div style="margin-top: 25px;">
-    <h3>📚 สื่อการเรียนการสอนประจำห้อง</h3>
-    <div id="mediaContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
-        <!-- วิดีโอจะถูกดึงมาใส่ตรงนี้ -->
+
+    <!-- สื่อการเรียน -->
+    <div style="margin-top: 25px;" class="card">
+        <h3>📚 สื่อการเรียนการสอนประจำห้อง</h3>
+        <div id="mediaContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+            <p style="color: #777;">กำลังโหลดสื่อการเรียน...</p>
+        </div>
     </div>
 </div>
 
 <script>
-    // ช่วงเวลาของแต่ละคาบ (หน่วยเป็นนาทีนับจาก 00:00)
+    const userRoom = "{{ data.room }}";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
+
+    // สั่งดึงสื่อการเรียนเมื่อเปิดหน้าเว็บทันที
+    document.addEventListener("DOMContentLoaded", function() {
+        if (userRoom && userRoom !== "-" && userRoom !== "None") {
+            loadStudentMedia(userRoom);
+        } else {
+            document.getElementById('mediaContainer').innerHTML = '<p style="color: #777; grid-column: 1/-1;">ไม่พบข้อมูลห้องเรียนของนักเรียน</p>';
+        }
+    });
+
+    // ฟังก์ชันดึงวิดีโอจาก Google Apps Script
+    function loadStudentMedia(studentClass) {
+        fetch(`${GOOGLE_SCRIPT_URL}?action=getMedia&class=${encodeURIComponent(studentClass)}`)
+            .then(res => res.json())
+            .then(videos => {
+                const container = document.getElementById('mediaContainer');
+                container.innerHTML = '';
+                
+                if (!videos || videos.length === 0) {
+                    container.innerHTML = '<p style="color: #777; grid-column: 1/-1;">ยังไม่มีสื่อการเรียนสำหรับห้องนี้</p>';
+                    return;
+                }
+
+                videos.forEach(v => {
+                    const card = `
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${v.subject}</span>
+                            <h4 style="margin: 8px 0; font-size: 15px;">${v.title}</h4>
+                            <iframe width="100%" height="180" src="${v.url}" frameborder="0" allowfullscreen style="border-radius: 6px;"></iframe>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('mediaContainer').innerHTML = '<p style="color: red; grid-column: 1/-1;">เกิดข้อผิดพลาดในการโหลดสื่อการเรียน</p>';
+            });
+    }
+
+    // ช่วงเวลาของแต่ละคาบ
     const periods = [
         { name: "คาบที่ 1", start: 8*60+30, end: 9*60+20, key: "P1" },
         { name: "คาบที่ 2", start: 9*60+20, end: 10*60+10, key: "P2" },
@@ -126,17 +184,12 @@
         { name: "คาบที่ 8", start: 15*60+10, end: 16*60+0, key: "P8" }
     ];
 
-    let todayScheduleData = null; // ข้อมูลตารางเฉพาะของวันนี้
-
     function updateLiveCountdown() {
-        if (!todayScheduleData) return;
-
         const now = new Date();
         const currentMins = (now.getHours() * 60) + now.getMinutes();
         const currentSecs = now.getSeconds();
 
         let activePeriod = null;
-
         for (let p of periods) {
             if (currentMins >= p.start && currentMins < p.end) {
                 activePeriod = p;
@@ -151,11 +204,9 @@
             if (activePeriod.key === "LUNCH") {
                 subjectText.innerText = "🍱 อยู่ในช่วงพักรับประทานอาหารกลางวัน";
             } else {
-                const subName = todayScheduleData[activePeriod.key] || 'ไม่มีเรียน/คาบว่าง';
-                subjectText.innerText = `📖 ${activePeriod.name}: วิชา ${subName}`;
+                subjectText.innerText = `📖 ${activePeriod.name}`;
             }
 
-            // คำนวณเวลานับถอยหลังก่อนหมดคาบ
             const totalEndSecs = activePeriod.end * 60;
             const totalNowSecs = (currentMins * 60) + currentSecs;
             const diffSecs = totalEndSecs - totalNowSecs;
@@ -170,80 +221,8 @@
         }
     }
 
-    // อัปเดตเวลานับถอยหลังทุกๆ 1 วินาที
     setInterval(updateLiveCountdown, 1000);
-
-function updateClassStatus(scheduleData) {
-    const now = new Date();
-    const currentMinutes = (now.getHours() * 60) + now.getMinutes();
-    
-    // ตัวอย่าง: คาบ 1 เริ่ม 08:30 (8*60 + 30 = 510 นาที) หมด 09:20 (560 นาที)
-    // ถ้านำ currentMinutes ไปเช็คเงื่อนไขตามช่วงเวลาแต่ละคาบ 
-    // เราจะทราบทันทีว่านักเรียนอยู่ในคาบไหน และ (เวลาจบคาบ - currentMinutes) = นาทีก่อนเปลี่ยนวิชา
-}
-function sendChatMessage() {
-    const input = document.getElementById('chatInput');
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    appendMessage('นักเรียน', msg);
-    input.value = '';
-
-    if (msg.includes('งานที่ยังไม่ได้ทำ') || msg.includes('การบ้าน')) {
-        // เรียก API ดึงงานที่ค้าง
-        fetch(`/get_missing_assignments?student=${encodeURIComponent(currentStudentName)}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.missing_tasks && data.missing_tasks.length > 0) {
-                    let text = '📋 งานที่ยังไม่ได้ทำมีดังนี้:\n' + data.missing_tasks.map(t => `- ${t}`).join('\n');
-                    appendMessage('ระบบ', text);
-                } else {
-                    appendMessage('ระบบ', '🎉 ยินดีด้วย! คุณไม่มีงานค้างในขณะนี้');
-                }
-            });
-    } else {
-        appendMessage('ระบบ', 'กรุณาพิมพ์คำว่า "งานที่ยังไม่ได้ทำ" เพื่อตรวจสอบงานค้างครับ');
-    }
-}
-// สั่งรันอัปเดตทุกๆ 1 นาที
-setInterval(updateClassStatus, 60000);
-function checkCurrentPeriod() {
-    const now = new Date();
-    // แปลงเวลาปัจจุบันเป็นนาที (เช่น 08:30 = 8*60 + 30 = 510 นาที)
-    const currentMins = (now.getHours() * 60) + now.getMinutes();
-
-    // ตัวอย่างเงื่อนไขคาบ 1 (08:30 - 09:20)
-    if (currentMins >= 510 && currentMins < 560) {
-        let timeLeft = 560 - currentMins;
-        document.getElementById('status').innerText = `กำลังเรียนคาบ 1 (เหลือ ${timeLeft} นาที)`;
-    }
-    // (สามารถเขียนเงื่อนไข else if ไล่ไปจนจบคาบ 8 และพักเที่ยง)
-
-    function loadStudentMedia(studentClass) {
-    fetch(`/get_media?class=${encodeURIComponent(studentClass)}`)
-        .then(res => res.json())
-        .then(videos => {
-            const container = document.getElementById('mediaContainer');
-            container.innerHTML = '';
-            
-            if (videos.length === 0) {
-                container.innerHTML = '<p style="color: #777;">ยังไม่มีสื่อการเรียนในขณะนี้</p>';
-                return;
-            }
-
-            videos.forEach(v => {
-                const card = `
-                    <div style="background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-                        <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${v.subject}</span>
-                        <h4 style="margin: 8px 0;">${v.title}</h4>
-                        <iframe width="100%" height="180" src="${v.url}" frameborder="0" allowfullscreen style="border-radius: 6px;"></iframe>
-                    </div>
-                `;
-                container.innerHTML += card;
-            });
-        });
-}
-}
+    updateLiveCountdown();
 </script>
 </body>
 </html>
