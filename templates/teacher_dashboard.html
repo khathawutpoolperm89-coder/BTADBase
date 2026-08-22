@@ -139,7 +139,32 @@
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('dateSelect').valueAsDate = new Date();
     });
+function uploadMedia() {
+    const selectedClass = document.getElementById('classSelect').value; // สมมติว่ามี select เลือกห้อง
+    const subject = document.getElementById('mediaSubject').value.trim();
+    const title = document.getElementById('mediaTitle').value.trim();
+    const url = document.getElementById('mediaUrl').value.trim();
 
+    if (!selectedClass || !subject || !title || !url) {
+        alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+        return;
+    }
+
+    fetch('/save_media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_name: selectedClass, subject: subject, title: title, video_url: url })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('เพิ่มสื่อการเรียนสำเร็จ!');
+            document.getElementById('mediaSubject').value = '';
+            document.getElementById('mediaTitle').value = '';
+            document.getElementById('mediaUrl').value = '';
+        }
+    });
+}
     function renderAttendanceTable() {
         const selectedClass = document.getElementById('classSelect').value;
         const selectedDate = document.getElementById('dateSelect').value;
@@ -195,32 +220,7 @@
         group.setAttribute('data-selected', status);
         calculateStats();
     }
-    function uploadMedia() {
-    const selectedClass = document.getElementById('classSelect').value; // สมมติว่ามี select เลือกห้อง
-    const subject = document.getElementById('mediaSubject').value.trim();
-    const title = document.getElementById('mediaTitle').value.trim();
-    const url = document.getElementById('mediaUrl').value.trim();
-
-    if (!selectedClass || !subject || !title || !url) {
-        alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
-        return;
-    }
-
-    fetch('/save_media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ class_name: selectedClass, subject: subject, title: title, video_url: url })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('เพิ่มสื่อการเรียนสำเร็จ!');
-            document.getElementById('mediaSubject').value = '';
-            document.getElementById('mediaTitle').value = '';
-            document.getElementById('mediaUrl').value = '';
-        }
-    });
-}
+    
 
     function calculateStats() {
         const groups = document.querySelectorAll('.status-group');
