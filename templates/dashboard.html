@@ -99,7 +99,151 @@
             </div>
         </div>
     </div>
+</div><!-- Widget แสดงวิชาปัจจุบันและนับถอยหลัง -->
+<div style="background: #ebf8ff; border: 1px solid #3182ce; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+    <h3 style="margin: 0; color: #2b6cb0;">สถานะการเรียนขณะนี้</h3>
+    <p id="currentSubjectText" style="font-size: 18px; font-weight: bold; color: #2d3748; margin: 8px 0;">กำลังโหลดข้อมูล...</p>
+    <div id="countdownBox" style="font-size: 14px; color: #e53e3e; font-weight: bold;"></div>
+</div>
+<div style="margin-top: 25px;">
+    <h3>📚 สื่อการเรียนการสอนประจำห้อง</h3>
+    <div id="mediaContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+        <!-- วิดีโอจะถูกดึงมาใส่ตรงนี้ -->
+    </div>
 </div>
 
+<script>
+    // ช่วงเวลาของแต่ละคาบ (หน่วยเป็นนาทีนับจาก 00:00)
+    const periods = [
+        { name: "คาบที่ 1", start: 8*60+30, end: 9*60+20, key: "P1" },
+        { name: "คาบที่ 2", start: 9*60+20, end: 10*60+10, key: "P2" },
+        { name: "คาบที่ 3", start: 10*60+10, end: 11*60+0, key: "P3" },
+        { name: "คาบที่ 4", start: 11*60+0, end: 11*60+50, key: "P4" },
+        { name: "พักเที่ยง", start: 11*60+50, end: 12*60+40, key: "LUNCH" },
+        { name: "คาบที่ 5", start: 12*60+40, end: 13*60+30, key: "P5" },
+        { name: "คาบที่ 6", start: 13*60+30, end: 14*60+20, key: "P6" },
+        { name: "คาบที่ 7", start: 14*60+20, end: 15*60+10, key: "P7" },
+        { name: "คาบที่ 8", start: 15*60+10, end: 16*60+0, key: "P8" }
+    ];
+
+    let todayScheduleData = null; // ข้อมูลตารางเฉพาะของวันนี้
+
+    function updateLiveCountdown() {
+        if (!todayScheduleData) return;
+
+        const now = new Date();
+        const currentMins = (now.getHours() * 60) + now.getMinutes();
+        const currentSecs = now.getSeconds();
+
+        let activePeriod = null;
+
+        for (let p of periods) {
+            if (currentMins >= p.start && currentMins < p.end) {
+                activePeriod = p;
+                break;
+            }
+        }
+
+        const subjectText = document.getElementById('currentSubjectText');
+        const countBox = document.getElementById('countdownBox');
+
+        if (activePeriod) {
+            if (activePeriod.key === "LUNCH") {
+                subjectText.innerText = "🍱 อยู่ในช่วงพักรับประทานอาหารกลางวัน";
+            } else {
+                const subName = todayScheduleData[activePeriod.key] || 'ไม่มีเรียน/คาบว่าง';
+                subjectText.innerText = `📖 ${activePeriod.name}: วิชา ${subName}`;
+            }
+
+            // คำนวณเวลานับถอยหลังก่อนหมดคาบ
+            const totalEndSecs = activePeriod.end * 60;
+            const totalNowSecs = (currentMins * 60) + currentSecs;
+            const diffSecs = totalEndSecs - totalNowSecs;
+
+            const minsLeft = Math.floor(diffSecs / 60);
+            const secsLeft = diffSecs % 60;
+
+            countBox.innerText = `⏳ เหลืออีก ${minsLeft} นาที ${secsLeft} วินาที จะถึงคาบถัดไป`;
+        } else {
+            subjectText.innerText = "ไม่อยู่ในช่วงเวลาเรียน";
+            countBox.innerText = "";
+        }
+    }
+
+    // อัปเดตเวลานับถอยหลังทุกๆ 1 วินาที
+    setInterval(updateLiveCountdown, 1000);
+
+function updateClassStatus(scheduleData) {
+    const now = new Date();
+    const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+    
+    // ตัวอย่าง: คาบ 1 เริ่ม 08:30 (8*60 + 30 = 510 นาที) หมด 09:20 (560 นาที)
+    // ถ้านำ currentMinutes ไปเช็คเงื่อนไขตามช่วงเวลาแต่ละคาบ 
+    // เราจะทราบทันทีว่านักเรียนอยู่ในคาบไหน และ (เวลาจบคาบ - currentMinutes) = นาทีก่อนเปลี่ยนวิชา
+}
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    appendMessage('นักเรียน', msg);
+    input.value = '';
+
+    if (msg.includes('งานที่ยังไม่ได้ทำ') || msg.includes('การบ้าน')) {
+        // เรียก API ดึงงานที่ค้าง
+        fetch(`/get_missing_assignments?student=${encodeURIComponent(currentStudentName)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.missing_tasks && data.missing_tasks.length > 0) {
+                    let text = '📋 งานที่ยังไม่ได้ทำมีดังนี้:\n' + data.missing_tasks.map(t => `- ${t}`).join('\n');
+                    appendMessage('ระบบ', text);
+                } else {
+                    appendMessage('ระบบ', '🎉 ยินดีด้วย! คุณไม่มีงานค้างในขณะนี้');
+                }
+            });
+    } else {
+        appendMessage('ระบบ', 'กรุณาพิมพ์คำว่า "งานที่ยังไม่ได้ทำ" เพื่อตรวจสอบงานค้างครับ');
+    }
+}
+// สั่งรันอัปเดตทุกๆ 1 นาที
+setInterval(updateClassStatus, 60000);
+function checkCurrentPeriod() {
+    const now = new Date();
+    // แปลงเวลาปัจจุบันเป็นนาที (เช่น 08:30 = 8*60 + 30 = 510 นาที)
+    const currentMins = (now.getHours() * 60) + now.getMinutes();
+
+    // ตัวอย่างเงื่อนไขคาบ 1 (08:30 - 09:20)
+    if (currentMins >= 510 && currentMins < 560) {
+        let timeLeft = 560 - currentMins;
+        document.getElementById('status').innerText = `กำลังเรียนคาบ 1 (เหลือ ${timeLeft} นาที)`;
+    }
+    // (สามารถเขียนเงื่อนไข else if ไล่ไปจนจบคาบ 8 และพักเที่ยง)
+
+    function loadStudentMedia(studentClass) {
+    fetch(`/get_media?class=${encodeURIComponent(studentClass)}`)
+        .then(res => res.json())
+        .then(videos => {
+            const container = document.getElementById('mediaContainer');
+            container.innerHTML = '';
+            
+            if (videos.length === 0) {
+                container.innerHTML = '<p style="color: #777;">ยังไม่มีสื่อการเรียนในขณะนี้</p>';
+                return;
+            }
+
+            videos.forEach(v => {
+                const card = `
+                    <div style="background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                        <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${v.subject}</span>
+                        <h4 style="margin: 8px 0;">${v.title}</h4>
+                        <iframe width="100%" height="180" src="${v.url}" frameborder="0" allowfullscreen style="border-radius: 6px;"></iframe>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        });
+}
+}
+</script>
 </body>
 </html>

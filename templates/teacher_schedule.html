@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการตารางเรียน - ครูที่ปรึกษา</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { color: #2c3e50; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: bold; color: #34495e; }
+        select, input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #e2e8f0; text-align: center; padding: 8px; font-size: 13px; }
+        th { background: #3498db; color: white; }
+        td input { width: 90%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; }
+        .lunch-break { background: #f8fafc; color: #64748b; font-weight: bold; }
+        .btn-group { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        button { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-save { background: #2ecc71; color: white; }
+        .btn-clear { background: #e74c3c; color: white; }
+        button:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>จัดการตารางเรียนประจำห้องเรียน</h2>
+    
+    <div class="form-group">
+        <label for="classSelect">เลือกห้องเรียน:</label>
+        <select id="classSelect" onchange="loadClassSchedule()">
+            <option value="">-- เลือกห้องเรียน --</option>
+            {% for c in classes %}
+                <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <form id="scheduleForm">
+        <table>
+            <thead>
+                <tr>
+                    <th>วัน</th>
+                    <th>คาบ 1<br><small>08:30-09:20</small></th>
+                    <th>คาบ 2<br><small>09:20-10:10</small></th>
+                    <th>คาบ 3<br><small>10:10-11:00</small></th>
+                    <th>คาบ 4<br><small>11:00-11:50</small></th>
+                    <th class="lunch-break">พักเที่ยง<br><small>11:50-12:40</small></th>
+                    <th>คาบ 5<br><small>12:40-13:30</small></th>
+                    <th>คาบ 6<br><small>13:30-14:20</small></th>
+                    <th>คาบ 7<br><small>14:20-15:10</small></th>
+                    <th>คาบ 8<br><small>15:10-16:00</small></th>
+                </tr>
+            </thead>
+            <tbody id="scheduleBody">
+                <!-- Javascript จะสร้างแถว จันทร์-ศุกร์ ให้อัตโนมัติ -->
+            </tbody>
+        </table>
+
+        <div class="btn-group">
+            <button type="button" class="btn-clear" onclick="clearForm()">ล้างข้อมูลทั้งหมด</button>
+            <button type="button" class="btn-save" onclick="saveSchedule()">บันทึกตารางเรียน</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const dayNamesTH = {'Monday':'จันทร์', 'Tuesday':'อังคาร', 'Wednesday':'พุธ', 'Thursday':'พฤหัสบดี', 'Friday':'ศุกร์'};
+
+    // โหลดตารางกรอกข้อมูล 5 วัน
+    function initTable() {
+        const tbody = document.getElementById('scheduleBody');
+        tbody.innerHTML = '';
+
+        days.forEach(day => {
+            let row = `<tr>
+                <td><b>วัน${dayNamesTH[day]}</b></td>`;
+            
+            // คาบ 1 - 4
+            for (let i = 1; i <= 4; i++) {
+                row += `<td><input type="text" id="${day}_P${i}" placeholder="-"></td>`;
+            }
+            
+            // พักเที่ยง
+            row += `<td class="lunch-break">พักเที่ยง</td>`;
+
+            // คาบ 5 - 8
+            for (let i = 5; i <= 8; i++) {
+                row += `<td><input type="text" id="${day}_P${i}" placeholder="-"></td>`;
+            }
+
+            row += `</tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    // ล้างข้อมูลในฟอร์ม
+    function clearForm() {
+        if (confirm('คุณต้องการล้างข้อมูลในฟอร์มทั้งหมดใช่หรือไม่?')) {
+            days.forEach(day => {
+                for (let i = 1; i <= 8; i++) {
+                    const input = document.getElementById(`${day}_P${i}`);
+                    if (input) input.value = '';
+                }
+            });
+        }
+    }
+
+    // บันทึกตารางเรียนส่งไปที่ Flask
+    function saveSchedule() {
+        const selectedClass = document.getElementById('classSelect').value;
+        if (!selectedClass) {
+            alert('กรุณาเลือกห้องเรียนก่อนบันทึกข้อมูล');
+            return;
+        }
+
+        let scheduleData = [];
+
+        days.forEach(day => {
+            let dayObj = { day: day };
+            for (let i = 1; i <= 8; i++) {
+                const val = document.getElementById(`${day}_P${i}`).value.trim();
+                dayObj[`P${i}`] = val || '-';
+            }
+            scheduleData.push(dayObj);
+        });
+
+        fetch('/save_schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                class_name: selectedClass,
+                schedule: scheduleData
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('บันทึกตารางเรียนเรียบร้อยแล้ว!');
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + data.message);
+            }
+        })
+        .catch(err => alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้'));
+    }
+
+    initTable();
+</script>
+</body>
+</html>

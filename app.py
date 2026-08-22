@@ -282,6 +282,26 @@ def get_report_data():
         return jsonify({"status": "success", "data": data})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+@app.route('/save_schedule', methods=['POST'])
+def save_schedule():
+    if session.get('role') != 'teacher':
+        return jsonify({"success": False, "message": "ไม่มีสิทธิ์ดำเนินการ"}), 403
+
+    data = request.json or {}
+    class_name = data.get('class_name')
+    schedule = data.get('schedule')
+
+    payload = {
+        "action": "saveSchedule",
+        "class": class_name,
+        "schedule": schedule
+    }
+
+    try:
+        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=10)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/logout')
 def logout():

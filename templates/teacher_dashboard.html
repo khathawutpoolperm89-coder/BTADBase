@@ -120,6 +120,15 @@
         
         <button class="btn-save" onclick="saveAttendance()">💾 บันทึกการเช็คชื่อลง Google Sheets</button>
         <div style="clear: both;"></div>
+        <div style="background: #fff; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <h3>🎬 เพิ่มสื่อการเรียนการสอน (YouTube)</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input type="text" id="mediaSubject" placeholder="ชื่อวิชา (เช่น คณิตศาสตร์)" style="padding: 8px; flex: 1;">
+        <input type="text" id="mediaTitle" placeholder="ชื่อหัวข้อ/เรื่องคลิป" style="padding: 8px; flex: 1;">
+        <input type="text" id="mediaUrl" placeholder="วางลิงก์ YouTube (https://...)" style="padding: 8px; flex: 2;">
+        <button onclick="uploadMedia()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">บันทึกสื่อ</button>
+    </div>
+</div>
     </div>
 <!-- SweetAlert2 CSS & JS -->
 <!-- SweetAlert2 CSS & JS -->
@@ -186,6 +195,32 @@
         group.setAttribute('data-selected', status);
         calculateStats();
     }
+    function uploadMedia() {
+    const selectedClass = document.getElementById('classSelect').value; // สมมติว่ามี select เลือกห้อง
+    const subject = document.getElementById('mediaSubject').value.trim();
+    const title = document.getElementById('mediaTitle').value.trim();
+    const url = document.getElementById('mediaUrl').value.trim();
+
+    if (!selectedClass || !subject || !title || !url) {
+        alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+        return;
+    }
+
+    fetch('/save_media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_name: selectedClass, subject: subject, title: title, video_url: url })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('เพิ่มสื่อการเรียนสำเร็จ!');
+            document.getElementById('mediaSubject').value = '';
+            document.getElementById('mediaTitle').value = '';
+            document.getElementById('mediaUrl').value = '';
+        }
+    });
+}
 
     function calculateStats() {
         const groups = document.querySelectorAll('.status-group');
