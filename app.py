@@ -169,7 +169,7 @@ def login():
             session['student_id'] = student_id_val
             
             # 🟢 ดึงข้อมูลห้องเรียนจาก Object ของนักเรียนเก็บลง Session
-            student_room = student.get('Class') or student.get('room') or student.get('ชั้นเรียน') or '-'
+            student_room = student.get('class') or student.get('room') or student.get('ชั้นเรียน') or '-'
             session['student_room'] = student_room
             
             return jsonify({"success": True, "message": "สำเร็จ"})
@@ -218,10 +218,12 @@ def create_teacher():
 def dashboard():
     if 'fullname' not in session:
         return redirect(url_for('login_page'))
-    
+
+    student_room = session.get('student_room', '-')
+
     student_data = {
         "name": session['fullname'],
-        session['student_room'] = user_found.get('class', '-')
+        "room": student_room,
         "next_class": {"subject": "อินเทอร์เน็ตในงานธุรกิจดิจิทัล", "time": "10:30 - 11:20", "room": "คอมฯ 1"},
         "today_schedule": [
             {"period": 1, "time": "08:30-09:20", "subject": "คณิตศาสตร์"},
@@ -233,11 +235,6 @@ def dashboard():
         "assignments": [
             {"task": "ออกแบบเว็บไซต์ E-commerce", "due": "15 ส.ค.", "status": "ค้างส่ง"},
             {"task": "แบบฝึกหัดคณิต หน้า 45", "due": "16 ส.ค.", "status": "ค้างส่ง"}
-        ],
-        "grades": [
-            {"subject": "คณิตศาสตร์", "grade": "3.5"},
-            {"subject": "วิทยาศาสตร์", "grade": "4.0"},
-            {"subject": "ภาษาอังกฤษ", "grade": "3.0"}
         ]
     }
     return render_template('dashboard.html', data=student_data)
