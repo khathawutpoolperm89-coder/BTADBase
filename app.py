@@ -221,7 +221,7 @@ def dashboard():
     
     student_data = {
         "name": session['fullname'],
-        "room": session.get('room', '-'),
+        session['student_room'] = user_found.get('class', '-')
         "next_class": {"subject": "อินเทอร์เน็ตในงานธุรกิจดิจิทัล", "time": "10:30 - 11:20", "room": "คอมฯ 1"},
         "today_schedule": [
             {"period": 1, "time": "08:30-09:20", "subject": "คณิตศาสตร์"},
