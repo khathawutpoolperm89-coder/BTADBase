@@ -352,40 +352,57 @@
     }
 
     // 🟢 ระบบบันทึกสื่อ YouTube
-    function uploadMedia() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const subject = document.getElementById('mediaSubject').value.trim();
-        const title = document.getElementById('mediaTitle').value.trim();
-        const url = document.getElementById('mediaUrl').value.trim();
+    // 🟢 แก้ไขฟังก์ชัน uploadMedia ให้ยิงตรงหา Google Apps Script
+function uploadMedia() {
+    const selectedClass = document.getElementById('classSelect').value;
+    const subject = document.getElementById('mediaSubject').value.trim();
+    const title = document.getElementById('mediaTitle').value.trim();
+    const url = document.getElementById('mediaUrl').value.trim();
 
-        if (!selectedClass) {
-            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนด้านบนก่อนบันทึก' });
-            return;
-        }
-
-        if (!subject || !title || !url) {
-            Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบทุกช่อง' });
-            return;
-        }
-
-        fetch('/save_media', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ class_name: selectedClass, subject: subject, title: title, video_url: url })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire({ icon: 'success', title: 'เพิ่มสื่อการเรียนสำเร็จ!' });
-                document.getElementById('mediaSubject').value = '';
-                document.getElementById('mediaTitle').value = '';
-                document.getElementById('mediaUrl').value = '';
-            } else {
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message });
-            }
-        });
+    if (!selectedClass) {
+        Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนด้านบนก่อนบันทึก' });
+        return;
     }
 
+    if (!subject || !title || !url) {
+        Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบทุกช่อง' });
+        return;
+    }
+
+    Swal.fire({
+        title: 'กำลังบันทึกสื่อการเรียน...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    const payload = {
+        action: "saveMedia",
+        class_name: selectedClass,
+        subject: subject,
+        title: title,
+        video_url: url
+    };
+
+    // 🟢 ยิงเข้า Google Apps Script ตรงๆ ไม่ผ่าน app.py
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
+
+    fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+    })
+    .then(() => {
+        Swal.fire({ icon: 'success', title: 'บันทึกสื่อการเรียนเรียบร้อย!' });
+        document.getElementById('mediaSubject').value = '';
+        document.getElementById('mediaTitle').value = '';
+        document.getElementById('mediaUrl').value = '';
+    })
+    .catch(err => {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
+    });
+}
     // 🟢 ระบบตารางเรียน 5 วัน
     function initScheduleTable() {
         const tbody = document.getElementById('scheduleBody');
