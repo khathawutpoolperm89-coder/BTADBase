@@ -2,463 +2,185 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - ระบบสำหรับอาจารย์</title>
+    <title>Teacher Dashboard - ระบบอาจารย์</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        
-        /* Navbar */
         .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .navbar h2 { margin: 0; color: #007bff; }
-        .btn-report { background: #28a745; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-left: 15px; }
-        .btn-logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: bold; margin-left: 10px; }
-
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
-        /* Filter Bar */
-        .filter-bar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-        .form-control { display: flex; flex-direction: column; gap: 5px; }
-        .form-control label { font-weight: bold; font-size: 14px; }
-        select, input[type="date"], input[type="text"] { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-
-        /* Navigation Tabs */
         .tab-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-        .tab-btn { padding: 12px 24px; font-size: 15px; font-weight: bold; color: #64748b; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s; }
-        .tab-btn:hover { color: #007bff; }
+        .tab-btn { padding: 12px 24px; font-size: 15px; font-weight: bold; color: #64748b; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; }
         .tab-btn.active { color: #007bff; border-bottom-color: #007bff; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
-        /* สรุปยอดประจำวัน */
-        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-box { padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 15px; }
-        .stat-present { background: #e8f5e9; color: #2e7d32; }
-        .stat-late { background: #fff8e1; color: #f57f17; }
-        .stat-absent { background: #ffebee; color: #c62828; }
-
-        /* Table */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        th { background-color: #f8f9fa; color: #555; }
-
-        /* Schedule Table Specifics */
-        .schedule-table th, .schedule-table td { text-align: center; border: 1px solid #e2e8f0; padding: 8px; }
-        .schedule-table th { background-color: #007bff; color: white; }
-        .schedule-table td input { width: 90%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; }
-        .lunch-break { background: #f8fafc; color: #64748b; font-weight: bold; }
-
-        /* Button Status Styles */
-        .status-group { display: flex; gap: 8px; }
-        .btn-status { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa; color: #555; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s ease; }
-        .btn-status.active-present { background-color: #28a745; color: white; border-color: #28a745; }
-        .btn-status.active-late { background-color: #ffc107; color: #333; border-color: #ffc107; }
-        .btn-status.active-absent { background-color: #dc3545; color: white; border-color: #dc3545; }
-
-        .btn-save { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; float: right; margin-top: 15px; }
-        .btn-save:hover { background: #0056b3; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <!-- Header Navbar -->
     <div class="navbar">
         <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
         <div>
             <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
-            <a href="/report" class="btn-report">📊 ดูรายงานภาพรวม</a>
-            <a href="/logout" class="btn-logout">ออกจากระบบ</a>
+            <a href="/logout" style="background:#dc3545; color:white; padding:8px 16px; border-radius:6px; text-decoration:none;">ออกจากระบบ</a>
         </div>
     </div>
 
-    <!-- ตัวกรองเลือกห้องและวันที่ -->
     <div class="card">
-        <div class="filter-bar">
-            <div class="form-control">
-                <label>1. เลือกชั้นเรียน:</label>
-                <select id="classSelect" onchange="onClassOrDateChange()">
-                    <option value="">-- กรุณาเลือกชั้นเรียน --</option>
-                    {% for c in classes %}
-                        <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-control">
-                <label>2. เลือกวันที่ต้องการจัดการ/ดูย้อนหลัง:</label>
-                <input type="date" id="dateSelect" onchange="onClassOrDateChange()">
-            </div>
-        </div>
+        <label><b>1. เลือกชั้นเรียน:</b></label>
+        <select id="classSelect" onchange="renderAttendanceTable()">
+            <option value="">-- กรุณาเลือกชั้นเรียน --</option>
+            {% for c in classes %}
+                <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+        </select>
+        <label style="margin-left:20px;"><b>2. วันที่:</b></label>
+        <input type="date" id="dateSelect" onchange="renderAttendanceTable()">
     </div>
 
-    <!-- แถบเมนูเปลี่ยนแท็บ -->
+    <!-- แถบเมนูแท็บ -->
     <div class="tab-container">
         <button class="tab-btn active" onclick="switchTab('attendance', event)">📝 เช็คชื่อนักเรียน</button>
+        <button class="tab-btn" onclick="switchTab('import', event)">📥 นำเข้ารายชื่อ (Google Sheet)</button>
         <button class="tab-btn" onclick="switchTab('media', event)">🎬 สื่อการเรียน (YouTube)</button>
-        <button class="tab-btn" onclick="switchTab('schedule', event)">📅 จัดการตารางเรียน</button>
     </div>
 
-    <!-- 🟢 แท็บที่ 1: เช็คชื่อนักเรียน -->
+    <!-- แท็บ 1: เช็คชื่อ -->
     <div id="tab-attendance" class="tab-content active">
-        <div class="card" id="studentCard" style="display: none;">
-            <h3 id="classTitle">เช็คชื่อนักเรียน</h3>
-            
-            <div class="summary-cards">
-                <div class="stat-box stat-present">
-                    มาเรียน: <span id="countPresent">0</span> คน (<span id="percentPresent">0</span>%)
-                </div>
-                <div class="stat-box stat-late">
-                    มาสาย: <span id="countLate">0</span> คน (<span id="percentLate">0</span>%)
-                </div>
-                <div class="stat-box stat-absent">
-                    ขาด/ลา: <span id="countAbsent">0</span> คน (<span id="percentAbsent">0</span>%)
-                </div>
-            </div>
-
+        <div class="card">
+            <h3>เช็คชื่อนักเรียน</h3>
             <table>
                 <thead>
-                    <tr>
-                        <th style="width: 10%;">ลำดับ</th>
-                        <th style="width: 40%;">ชื่อ-นามสกุล</th>
-                        <th style="width: 50%;">สถานะเข้าเรียน</th>
-                    </tr>
+                    <tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>สถานะ</th></tr>
                 </thead>
                 <tbody id="studentTableBody"></tbody>
             </table>
-            
-            <button class="btn-save" onclick="saveAttendance()">💾 บันทึกการเช็คชื่อลง Google Sheets</button>
-            <div style="clear: both;"></div>
+            <button onclick="saveAttendance()" style="margin-top:15px; background:#007bff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">💾 บันทึกการเช็คชื่อลง Neon</button>
         </div>
     </div>
 
-    <!-- 🟢 แท็บที่ 2: เพิ่มสื่อการเรียน (YouTube) -->
+    <!-- แท็บ 2: นำเข้ารายชื่อนักเรียนจาก Google Sheet -->
+    <div id="tab-import" class="tab-content">
+        <div class="card">
+            <h3>📥 นำเข้ารายชื่อนักเรียนเข้า Neon DB</h3>
+            <p style="color:#666; font-size:14px;">วางลิงก์ Google Sheet ที่ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์" (ต้องมี Column: student_id, fullname, class)</p>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="sheetUrlInput" placeholder="วางลิงก์ Google Sheet..." style="flex:1; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                <button onclick="submitImportSheet()" style="background:#28a745; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">นำเข้าข้อมูล</button>
+            </div>
+            <div id="importResult" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
+    <!-- แท็บ 3: เพิ่มสื่อการสอน -->
     <div id="tab-media" class="tab-content">
         <div class="card">
-            <h3>🎬 เพิ่มสื่อการเรียนการสอน (YouTube)</h3>
-            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">ระบบจะบันทึกสื่อการเรียนไปยังห้องเรียนที่เลือกไว้ด้านบน</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 10px; align-items: center;">
-                <input type="text" id="mediaSubject" placeholder="ชื่อวิชา (เช่น คณิตศาสตร์)">
-                <input type="text" id="mediaTitle" placeholder="ชื่อหัวข้อ/เรื่องคลิป">
-                <input type="text" id="mediaUrl" placeholder="วางลิงก์ YouTube (https://www.youtube.com/watch?v=...)">
-                <button onclick="uploadMedia()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">บันทึกสื่อ</button>
+            <h3>🎬 เพิ่มสื่อการเรียนการสอน</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px;">
+                <input type="text" id="mediaSubject" placeholder="ชื่อวิชา">
+                <input type="text" id="mediaTitle" placeholder="ชื่อหัวข้อ">
+                <input type="text" id="mediaUrl" placeholder="ลิงก์ YouTube">
+                <button onclick="uploadMedia()" style="background:#28a745; color:white; border:none; padding:10px 20px;">บันทึกสื่อ</button>
             </div>
         </div>
     </div>
 
-    <!-- 🟢 แท็บที่ 3: จัดการตารางเรียน -->
-    <div id="tab-schedule" class="tab-content">
-        <div class="card">
-            <h3>📅 จัดการตารางเรียนประจำห้อง (จันทร์ - ศุกร์)</h3>
-            <p style="color: #666; font-size: 14px;">กรอกชื่อวิชาประจำคาบเรียน แล้วกดบันทึกตารางเรียน</p>
-            
-            <form id="scheduleForm">
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>วัน</th>
-                            <th>คาบ 1<br><small>08:30-09:20</small></th>
-                            <th>คาบ 2<br><small>09:20-10:10</small></th>
-                            <th>คาบ 3<br><small>10:10-11:00</small></th>
-                            <th>คาบ 4<br><small>11:00-11:50</small></th>
-                            <th class="lunch-break">พักเที่ยง<br><small>11:50-12:40</small></th>
-                            <th>คาบ 5<br><small>12:40-13:30</small></th>
-                            <th>คาบ 6<br><small>13:30-14:20</small></th>
-                            <th>คาบ 7<br><small>14:20-15:10</small></th>
-                            <th>คาบ 8<br><small>15:10-16:00</small></th>
-                        </tr>
-                    </thead>
-                    <tbody id="scheduleBody"></tbody>
-                </table>
-
-                <div style="margin-top: 15px; text-align: right;">
-                    <button type="button" onclick="clearScheduleForm()" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-right: 10px;">ล้างข้อมูล</button>
-                    <button type="button" onclick="saveSchedule()" style="background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">บันทึกตารางเรียน</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-<!-- SweetAlert2 CSS & JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const allStudentsData = {{ all_students | tojson }};
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    const dayNamesTH = {'Monday':'จันทร์', 'Tuesday':'อังคาร', 'Wednesday':'พุธ', 'Thursday':'พฤหัสบดี', 'Friday':'ศุกร์'};
 
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('dateSelect').valueAsDate = new Date();
-        initScheduleTable();
     });
 
-    // ฟังก์ชันสลับแท็บเมนู
     function switchTab(tabName, event) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        
         document.getElementById(`tab-${tabName}`).classList.add('active');
         event.currentTarget.classList.add('active');
     }
 
-    function onClassOrDateChange() {
-        renderAttendanceTable();
-    }
-
-    // 🟢 ระบบเช็คชื่อ
     function renderAttendanceTable() {
         const selectedClass = document.getElementById('classSelect').value;
-        const selectedDate = document.getElementById('dateSelect').value;
-        const studentCard = document.getElementById('studentCard');
         const tbody = document.getElementById('studentTableBody');
-        
-        if (!selectedClass || !selectedDate) {
-            studentCard.style.display = 'none';
-            return;
-        }
-
-        document.getElementById('classTitle').textContent = `เช็คชื่อนักเรียนชั้น ${selectedClass} ประจำวันที่ ${selectedDate}`;
         tbody.innerHTML = '';
-        studentCard.style.display = 'block';
 
         const filtered = allStudentsData.filter(s => s.class === selectedClass);
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">ไม่พบนักเรียนในห้องนี้</td></tr>';
-            updateSummary(0, 0, 0, 0);
-            return;
-        }
-
         filtered.forEach((student, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td><strong class="student-name">${student.name}</strong></td>
-                <td>
-                    <div class="status-group" data-selected="มา">
-                        <button type="button" class="btn-status active-present" onclick="selectStatus(this, 'มา')">มา</button>
-                        <button type="button" class="btn-status" onclick="selectStatus(this, 'สาย')">สาย</button>
-                        <button type="button" class="btn-status" onclick="selectStatus(this, 'ขาด')">ขาด/ลา</button>
-                    </div>
-                </td>
+            tbody.innerHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><strong class="student-name">${student.name}</strong></td>
+                    <td>
+                        <select class="status-select">
+                            <option value="มา">มา</option>
+                            <option value="สาย">สาย</option>
+                            <option value="ขาด">ขาด/ลา</option>
+                        </select>
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(tr);
         });
-
-        calculateStats();
-    }
-
-    function selectStatus(btn, status) {
-        const group = btn.closest('.status-group');
-        group.querySelectorAll('.btn-status').forEach(b => {
-            b.classList.remove('active-present', 'active-late', 'active-absent');
-        });
-
-        if (status === 'มา') btn.classList.add('active-present');
-        else if (status === 'สาย') btn.classList.add('active-late');
-        else if (status === 'ขาด') btn.classList.add('active-absent');
-
-        group.setAttribute('data-selected', status);
-        calculateStats();
-    }
-
-    function calculateStats() {
-        const groups = document.querySelectorAll('.status-group');
-        const total = groups.length;
-        let present = 0, late = 0, absent = 0;
-
-        groups.forEach(group => {
-            const status = group.getAttribute('data-selected') || 'มา';
-            if (status === 'มา') present++;
-            else if (status === 'สาย') late++;
-            else if (status === 'ขาด') absent++;
-        });
-
-        updateSummary(present, late, absent, total);
-    }
-
-    function updateSummary(present, late, absent, total) {
-        const pPresent = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
-        const pLate = total > 0 ? ((late / total) * 100).toFixed(1) : 0;
-        const pAbsent = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
-
-        document.getElementById('countPresent').textContent = present;
-        document.getElementById('countLate').textContent = late;
-        document.getElementById('countAbsent').textContent = absent;
-
-        document.getElementById('percentPresent').textContent = pPresent;
-        document.getElementById('percentLate').textContent = pLate;
-        document.getElementById('percentAbsent').textContent = pAbsent;
-    }
-
-    function getAttendanceRecords() {
-        const records = [];
-        const now = new Date();
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        const rows = document.querySelectorAll('#studentTableBody tr');
-        rows.forEach(row => {
-            const nameEl = row.querySelector('.student-name');
-            const groupEl = row.querySelector('.status-group');
-            
-            if (nameEl && groupEl) {
-                records.push({
-                    name: nameEl.textContent.trim(),
-                    status: groupEl.getAttribute('data-selected') || 'มา',
-                    time: currentTime
-                });
-            }
-        });
-        return records;
     }
 
     function saveAttendance() {
         const selectedDate = document.getElementById('dateSelect').value;
         const selectedClass = document.getElementById('classSelect').value;
-        const records = getAttendanceRecords();
+        const rows = document.querySelectorAll('#studentTableBody tr');
+        const records = [];
 
-        if (!selectedClass || records.length === 0) {
-            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนก่อนบันทึก' });
-            return;
-        }
-
-        Swal.fire({
-            title: 'กำลังบันทึกข้อมูล...',
-            text: 'กำลังส่งข้อมูลไปยัง Google Sheets',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => { Swal.showLoading(); }
+        rows.forEach(r => {
+            records.push({
+                name: r.querySelector('.student-name').innerText,
+                status: r.querySelector('.status-select').value
+            });
         });
 
-        const payload = {
-            action: "saveAttendance",
-            date: selectedDate,
-            class: selectedClass,
-            records: records
-        };
-
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
-
-        fetch(GOOGLE_SCRIPT_URL, {
+        fetch('/save_attendance', {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ date: selectedDate, class: selectedClass, records: records })
         })
-        .then(() => {
-            Swal.fire({ icon: 'success', title: 'บันทึกเรียบร้อย!', timer: 1500, showConfirmButton: false });
-        })
-        .catch(err => {
-            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
-        });
+        .then(res => res.json())
+        .then(data => Swal.fire('สำเร็จ', data.message, 'success'));
     }
 
-    // 🟢 ระบบบันทึกสื่อ YouTube
-    // 🟢 แก้ไขฟังก์ชัน uploadMedia ให้ยิงตรงหา Google Apps Script
-function uploadMedia() {
-    const selectedClass = document.getElementById('classSelect').value;
-    const subject = document.getElementById('mediaSubject').value.trim();
-    const title = document.getElementById('mediaTitle').value.trim();
-    const url = document.getElementById('mediaUrl').value.trim();
+    function submitImportSheet() {
+        const url = document.getElementById('sheetUrlInput').value;
+        const resultDiv = document.getElementById('importResult');
+        resultDiv.innerHTML = '⏳ กำลังนำเข้าข้อมูล...';
 
-    if (!selectedClass) {
-        Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนด้านบนก่อนบันทึก' });
-        return;
-    }
-
-    if (!subject || !title || !url) {
-        Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบทุกช่อง' });
-        return;
-    }
-
-    Swal.fire({
-        title: 'กำลังบันทึกสื่อการเรียน...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    const payload = {
-        action: "saveMedia",
-        class_name: selectedClass,
-        subject: subject,
-        title: title,
-        video_url: url
-    };
-
-    // 🟢 ยิงเข้า Google Apps Script ตรงๆ ไม่ผ่าน app.py
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec";
-
-    fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-    })
-    .then(() => {
-        Swal.fire({ icon: 'success', title: 'บันทึกสื่อการเรียนเรียบร้อย!' });
-        document.getElementById('mediaSubject').value = '';
-        document.getElementById('mediaTitle').value = '';
-        document.getElementById('mediaUrl').value = '';
-    })
-    .catch(err => {
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.toString() });
-    });
-}
-    // 🟢 ระบบตารางเรียน 5 วัน
-    function initScheduleTable() {
-        const tbody = document.getElementById('scheduleBody');
-        tbody.innerHTML = '';
-
-        days.forEach(day => {
-            let row = `<tr><td><b>วัน${dayNamesTH[day]}</b></td>`;
-            for (let i = 1; i <= 4; i++) row += `<td><input type="text" id="${day}_P${i}" placeholder="-"></td>`;
-            row += `<td class="lunch-break">พักเที่ยง</td>`;
-            for (let i = 5; i <= 8; i++) row += `<td><input type="text" id="${day}_P${i}" placeholder="-"></td>`;
-            row += `</tr>`;
-            tbody.innerHTML += row;
-        });
-    }
-
-    function clearScheduleForm() {
-        days.forEach(day => {
-            for (let i = 1; i <= 8; i++) {
-                const el = document.getElementById(`${day}_P${i}`);
-                if (el) el.value = '';
-            }
-        });
-    }
-
-    function saveSchedule() {
-        const selectedClass = document.getElementById('classSelect').value;
-        if (!selectedClass) {
-            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกชั้นเรียนด้านบนก่อนบันทึก' });
-            return;
-        }
-
-        let scheduleData = [];
-        days.forEach(day => {
-            let dayObj = { day: day };
-            for (let i = 1; i <= 8; i++) {
-                const val = document.getElementById(`${day}_P${i}`).value.trim();
-                dayObj[`P${i}`] = val || '-';
-            }
-            scheduleData.push(dayObj);
-        });
-
-        fetch('/save_schedule', {
+        fetch('/api/import_students_sheet', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ class_name: selectedClass, schedule: scheduleData })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ sheet_url: url })
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                Swal.fire({ icon: 'success', title: 'บันทึกตารางเรียนเรียบร้อย!' });
+            if(data.success) {
+                resultDiv.innerHTML = `<b style="color:green;">✅ ${data.message}</b>`;
+                setTimeout(() => location.reload(), 1500);
             } else {
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message });
+                resultDiv.innerHTML = `<b style="color:red;">❌ ${data.message}</b>`;
             }
         });
     }
-</script>
 
+    function uploadMedia() {
+        fetch('/save_media', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                class_name: document.getElementById('classSelect').value,
+                subject: document.getElementById('mediaSubject').value,
+                title: document.getElementById('mediaTitle').value,
+                video_url: document.getElementById('mediaUrl').value
+            })
+        })
+        .then(res => res.json())
+        .then(data => Swal.fire('สำเร็จ', data.message, 'success'));
+    }
+</script>
 </body>
 </html>

@@ -1,79 +1,25 @@
+import os
+import csv
+import io
+import re
 import requests
-from urllib.parse import quote
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_student_app'
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxECb2v3avtM8sFb8lruYSlf-PybV3cazw2orggnzsVmjMhhwOgxj3vgkWmvcdLpq_5/exec"
+# 🐘 ดึง Connection String ของ Neon จาก Environment Variable
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def get_student_data():
-    try:
-        response = requests.get(APPS_SCRIPT_URL)
-        if response.status_code == 200:
-            return response.json()
-        print("Error: Status Code", response.status_code)
-        return []
-    except Exception as e:
-        print("Error fetching data:", e)
-        return []
+def get_db():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
-# 🟢 บันทึกข้อมูลการเช็คชื่อลง Google Sheets ผ่าน Google Apps Script
-@app.route('/save_attendance', methods=['POST'])
-def save_attendance():
-    if 'fullname' not in session:
-        return jsonify({"success": False, "message": "กรุณาเข้าสู่ระบบก่อน"}), 401
+# ---------------------------------------------------------
+# 🟢 1. ระบบ Login & หน้าหลัก
+# ---------------------------------------------------------
 
-    data = request.get_json()
-    attendance_date = data.get('date')
-    selected_class = data.get('class')
-    records = data.get('records', [])
-
-    try:
-        payload = {
-            "action": "saveAttendance",
-            "date": attendance_date,
-            "class": selected_class,
-            "records": records
-        }
-        
-        response = requests.post(APPS_SCRIPT_URL, json=payload, timeout=10)
-        
-        if response.status_code == 200:
-            return jsonify({"success": True, "message": f"บันทึกข้อมูลห้อง {selected_class} เรียบร้อยแล้ว!"})
-        else:
-            return jsonify({"success": False, "message": "ไม่สามารถส่งข้อมูลไปยัง Google Sheets ได้"}), 500
-
-    except Exception as e:
-        print("Save attendance error:", e)
-        return jsonify({"success": False, "message": str(e)}), 500
-@app.route('/save_media', methods=['POST'])
-def save_media():
-    try:
-        data = request.get_json()
-        payload = {
-            "action": "saveMedia",
-            "class_name": data.get("class_name"),
-            "subject": data.get("subject"),
-            "title": data.get("title"),
-            "video_url": data.get("video_url")
-        }
-        
-        # ส่งข้อมูลไปยัง Google Apps Script
-        response = requests.post(GOOGLE_SCRIPT_URL, json=payload)
-        return jsonify({"success": True, "message": "บันทึกสื่อเรียบร้อยแล้ว"})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/get_media', methods=['GET'])
-def get_media():
-    try:
-        class_name = request.args.get('class')
-        # ดึงข้อมูลสื่อตามชั้นเรียนจาก Google Apps Script
-        response = requests.get(f"{GOOGLE_SCRIPT_URL}?action=getMedia&class={class_name}")
-        return response.text, 200, {'Content-Type': 'application/json'}
-    except Exception as e:
-        return jsonify([]), 500
 @app.route('/')
 def login_page():
     if 'fullname' in session:
@@ -83,31 +29,44 @@ def login_page():
             return redirect(url_for('teacher_dashboard'))
         return redirect(url_for('dashboard'))
         
-    records = get_student_data()
-    classes = set()
-    all_students = []
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT fullname, class FROM students ORDER BY class, fullname")
+    all_students = cur.fetchall()
     
-    if records and isinstance(records, list):
-        for row in records:
-            student_class = ""
-            student_name = ""
-            for k, v in row.items():
-                if 'class' in str(k).lower() and v:
-                    student_class = str(v).strip()
-                    classes.add(student_class)
-                if 'fullname' in str(k).lower() or 'name' in str(k).lower():
-                    student_name = str(v).strip()
-            
-            if student_class and student_name:
-                all_students.append({
-                    "class": student_class,
-                    "name": student_name
-                })
-                    
-    sorted_classes = sorted(list(classes))
-    return render_template('login.html', classes=sorted_classes, all_students=all_students)
+    classes = sorted(list(set(s['class'] for s in all_students)))
+    cur.close()
+    conn.close()
+    
+    return render_template('login.html', classes=classes, all_students=all_students)
 
-# 🟢 [แก้ไขจุดส่งผลต่อ Login Admin] ทำการยืดหยุ่นการตรวจจับ String และ Space
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json or {}
+    selected_name = data.get('fullname')
+    entered_pin = data.get('pin')
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM students WHERE fullname = %s", (selected_name,))
+    student = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if student:
+        student_id_val = str(student['student_id'])
+        last_4 = student_id_val[-4:] if len(student_id_val) >= 4 else student_id_val
+        
+        if entered_pin == last_4:
+            session['role'] = 'student'
+            session['fullname'] = student['fullname']
+            session['student_id'] = student['student_id']
+            session['student_room'] = student['class']
+            return jsonify({"success": True, "message": "สำเร็จ"})
+        return jsonify({"success": False, "message": "รหัสผ่านไม่ถูกต้อง"})
+            
+    return jsonify({"success": False, "message": "ไม่พบข้อมูล"})
+
 @app.route('/login_staff', methods=['POST'])
 def login_staff():
     try:
@@ -116,24 +75,16 @@ def login_staff():
         username = str(data.get('username', '')).strip()
         password = str(data.get('password', '')).strip()
 
-        res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", allow_redirects=True, timeout=10)
-        staff_list = res.json()
-
-        user = None
-        if isinstance(staff_list, list):
-            for s in staff_list:
-                s_user = str(s.get('username', '')).strip()
-                s_pass = str(s.get('password', '')).strip()
-                s_role = str(s.get('role', '')).strip().lower()
-
-                if s_user == username and s_pass == password and s_role == role:
-                    user = s
-                    break
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM staff WHERE LOWER(username) = LOWER(%s) AND password = %s AND LOWER(role) = LOWER(%s)", (username, password, role))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
 
         if user:
-            session['role'] = user.get('role')
-            session['fullname'] = user.get('fullname')
-            
+            session['role'] = user['role']
+            session['fullname'] = user['fullname']
             redirect_url = '/admin_dashboard' if role == 'admin' else '/teacher_dashboard'
             return jsonify({"success": True, "redirect_url": redirect_url})
             
@@ -141,101 +92,180 @@ def login_staff():
     except Exception as e:
         return jsonify({"success": False, "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
-@app.route('/login', methods=['POST'])
-def login():
+# ---------------------------------------------------------
+# 📥 2. API นำเข้านักเรียนจาก Google Sheet Link ลง Neon
+# ---------------------------------------------------------
+
+@app.route('/api/import_students_sheet', methods=['POST'])
+def import_students_sheet():
     data = request.json or {}
-    selected_name = data.get('fullname')
-    entered_pin = data.get('pin')
-    records = get_student_data()
-    student = None
-    
-    for row in records:
-        for k, v in row.items():
-            if 'name' in str(k).lower() and str(v).strip() == selected_name:
-                student = row
-                break
-    
-    if student:
-        student_id_val = ""
-        for k, v in student.items():
-            if 'id' in str(k).lower() and 'national' not in str(k).lower():
-                student_id_val = str(v).strip()
+    sheet_url = data.get('sheet_url')
+
+    if not sheet_url:
+        return jsonify({"success": False, "message": "กรุณาระบุ URL ของ Google Sheet"}), 400
+
+    try:
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+        if not match:
+            return jsonify({"success": False, "message": "รูปแบบ URL ไม่ถูกต้อง"}), 400
         
-        last_4 = student_id_val[-4:] if len(student_id_val) >= 4 else student_id_val
-        
-        if entered_pin == last_4:
-            session['role'] = 'student'
-            session['fullname'] = selected_name
-            session['student_id'] = student_id_val
-            
-            # 🟢 ดึงข้อมูลห้องเรียนจาก Object ของนักเรียนเก็บลง Session
-            student_room = student.get('class') or student.get('room') or student.get('ชั้นเรียน') or '-'
-            session['student_room'] = student_room
-            
-            return jsonify({"success": True, "message": "สำเร็จ"})
-        else:
-            return jsonify({"success": False, "message": "รหัสผ่านไม่ถูกต้อง"})
-            
-    return jsonify({"success": False, "message": "ไม่พบข้อมูล"})
+        sheet_id = match.group(1)
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
 
-@app.route('/admin_dashboard')
-def admin_dashboard():
-    if session.get('role') != 'admin':
-        return redirect(url_for('login_page'))
-    return render_template('admin_dashboard.html')
+        response = requests.get(csv_url, timeout=15)
+        if response.status_code != 200:
+            return jsonify({"success": False, "message": "เข้าถึง Sheet ไม่ได้ กรุณาตั้งค่าแชร์เป็น 'ทุกคนที่มีลิงก์'"}), 400
 
-@app.route('/get_staff_list')
-def get_staff_list():
-    if session.get('role') != 'admin':
-        return jsonify([])
-    res = requests.get(f"{APPS_SCRIPT_URL}?action=getStaff", timeout=10)
-    return jsonify(res.json())
+        csv_file = io.StringIO(response.content.decode('utf-8'))
+        reader = csv.DictReader(csv_file)
 
-@app.route('/create_teacher', methods=['POST'])
-def create_teacher():
-    if session.get('role') != 'admin':
-        return jsonify({"success": False, "message": "คุณไม่มีสิทธิ์ในการดำเนินการนี้"}), 403
+        conn = get_db()
+        cur = conn.cursor()
+        count = 0
+        for row in reader:
+            s_id = str(row.get('student_id', '')).strip()
+            fname = str(row.get('fullname', '')).strip()
+            s_class = str(row.get('class', '')).strip()
+            n_id = str(row.get('national_id', '')).strip() or None
 
+            if s_id and fname and s_class:
+                cur.execute("""
+                    INSERT INTO students (student_id, fullname, class, national_id)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (student_id) DO UPDATE
+                    SET fullname = EXCLUDED.fullname, class = EXCLUDED.class, national_id = EXCLUDED.national_id
+                """, (s_id, fname, s_class, n_id))
+                count += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": f"นำเข้าข้อมูลสำเร็จ {count} รายการ"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# ---------------------------------------------------------
+# 🎬 3. จัดการสื่อการสอน & แบบทดสอบ (Quiz)
+# ---------------------------------------------------------
+
+@app.route('/get_media', methods=['GET'])
+def get_media():
+    student_class = request.args.get('class', '')
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT m.id, m.subject, m.title, m.url, q.id AS quiz_id 
+        FROM media m
+        LEFT JOIN quizzes q ON m.id = q.media_id
+        WHERE LOWER(m.class) = LOWER(%s) OR LOWER(m.class) = 'all' OR %s = ''
+    """, (student_class, student_class))
+    
+    videos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(videos)
+
+@app.route('/save_media', methods=['POST'])
+def save_media():
     data = request.json or {}
-    username = data.get('username')
-    password = data.get('password')
-    fullname = data.get('fullname')
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO media (class, subject, title, url)
+        VALUES (%s, %s, %s, %s)
+    """, (data.get('class_name'), data.get('subject'), data.get('title'), data.get('video_url')))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"success": True, "message": "บันทึกสื่อเรียบร้อยแล้ว"})
 
-    if not username or not password or not fullname:
-        return jsonify({"success": False, "message": "กรุณากรอกข้อมูลให้ครบถ้วน"})
+@app.route('/api/get_quiz/<int:quiz_id>', methods=['GET'])
+def get_quiz(quiz_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, title, subject FROM quizzes WHERE id = %s", (quiz_id,))
+    quiz = cur.fetchone()
+    
+    if not quiz:
+        return jsonify({"success": False, "message": "ไม่พบข้อสอบ"}), 404
+        
+    cur.execute("SELECT id, question_text, option_a, option_b, option_c, option_d FROM questions WHERE quiz_id = %s", (quiz_id,))
+    questions = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"success": True, "quiz": quiz, "questions": questions})
 
-    payload = {
-        'action': 'addTeacher',
-        'username': username,
-        'password': password,
-        'fullname': fullname
-    }
-    requests.get(APPS_SCRIPT_URL, params=payload, timeout=10)
+@app.route('/api/submit_quiz', methods=['POST'])
+def submit_quiz():
+    data = request.json or {}
+    quiz_id = data.get('quiz_id')
+    user_answers = data.get('answers', {})
+    
+    student_id = session.get('student_id', 'GUEST')
+    student_name = session.get('fullname', 'ไม่ระบุชื่อ')
 
-    return jsonify({"success": True, "message": "สร้างบัญชีอาจารย์เรียบร้อยแล้ว!"})
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, correct_option FROM questions WHERE quiz_id = %s", (quiz_id,))
+    questions = cur.fetchall()
+    
+    score = 0
+    total = len(questions)
+    for q in questions:
+        q_id = str(q['id'])
+        if q_id in user_answers and user_answers[q_id] == q['correct_option']:
+            score += 1
+
+    cur.execute("""
+        INSERT INTO quiz_scores (quiz_id, student_id, student_name, score, total_questions)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (quiz_id, student_id, student_name, score, total))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"success": True, "score": score, "total": total})
+
+# ---------------------------------------------------------
+# 📝 4. บันทึกเช็คชื่อ & แดชบอร์ด
+# ---------------------------------------------------------
+
+@app.route('/save_attendance', methods=['POST'])
+def save_attendance():
+    data = request.json or {}
+    attendance_date = data.get('date')
+    selected_class = data.get('class')
+    records = data.get('records', [])
+
+    conn = get_db()
+    cur = conn.cursor()
+    for rec in records:
+        cur.execute("""
+            INSERT INTO attendance (date, class, student_name, status)
+            VALUES (%s, %s, %s, %s)
+        """, (attendance_date, selected_class, rec['name'], rec['status']))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"success": True, "message": "บันทึกการเช็คชื่อลง Neon เรียบร้อย!"})
 
 @app.route('/dashboard')
 def dashboard():
     if 'fullname' not in session:
         return redirect(url_for('login_page'))
 
-    student_room = session.get('student_room', '-')
-
     student_data = {
         "name": session['fullname'],
-        "room": student_room,
+        "room": session.get('student_room', '-'),
         "next_class": {"subject": "อินเทอร์เน็ตในงานธุรกิจดิจิทัล", "time": "10:30 - 11:20", "room": "คอมฯ 1"},
         "today_schedule": [
             {"period": 1, "time": "08:30-09:20", "subject": "คณิตศาสตร์"},
-            {"period": 2, "time": "09:20-10:10", "subject": "ภาษาอังกฤษ"},
-            {"period": 3, "time": "10:30-11:20", "subject": "อินเทอร์เน็ตในงานธุรกิจดิจิทัล"},
-            {"period": 4, "time": "11:20-12:10", "subject": "พักกลางวัน"},
-            {"period": 5, "time": "12:10-13:00", "subject": "วิทยาศาสตร์"}
+            {"period": 2, "time": "09:20-10:10", "subject": "ภาษาอังกฤษ"}
         ],
-        "assignments": [
-            {"task": "ออกแบบเว็บไซต์ E-commerce", "due": "15 ส.ค.", "status": "ค้างส่ง"},
-            {"task": "แบบฝึกหัดคณิต หน้า 45", "due": "16 ส.ค.", "status": "ค้างส่ง"}
-        ]
+        "assignments": []
     }
     return render_template('dashboard.html', data=student_data)
 
@@ -244,92 +274,17 @@ def teacher_dashboard():
     if session.get('role') != 'teacher':
         return redirect(url_for('login_page'))
 
-    records = get_student_data()
-    classes = set()
-    all_students = []
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT fullname, class FROM students ORDER BY class, fullname")
+    students = cur.fetchall()
     
-    if records and isinstance(records, list):
-        for row in records:
-            student_class = ""
-            student_name = ""
-            for k, v in row.items():
-                if 'class' in str(k).lower() and v:
-                    student_class = str(v).strip()
-                    classes.add(student_class)
-                if 'fullname' in str(k).lower() or 'name' in str(k).lower():
-                    student_name = str(v).strip()
-            
-            if student_class and student_name:
-                all_students.append({
-                    "class": student_class,
-                    "name": student_name
-                })
-
-    sorted_classes = sorted(list(classes))
-    return render_template('teacher_dashboard.html', classes=sorted_classes, all_students=all_students)
-
-@app.route('/report')
-def report():
-    if 'fullname' not in session:
-        return redirect(url_for('login_page'))
-
-    records = get_student_data()
-    classes = set()
-    all_students = []
+    classes = sorted(list(set(s['class'] for s in students)))
+    all_students = [{"class": s['class'], "name": s['fullname']} for s in students]
     
-    if records and isinstance(records, list):
-        for row in records:
-            student_class = ""
-            student_name = ""
-            for k, v in row.items():
-                if 'class' in str(k).lower() and v:
-                    student_class = str(v).strip()
-                    classes.add(student_class)
-                if 'fullname' in str(k).lower() or 'name' in str(k).lower():
-                    student_name = str(v).strip()
-            
-            if student_class and student_name:
-                all_students.append({
-                    "class": student_class,
-                    "name": student_name
-                })
-
-    sorted_classes = sorted(list(classes))
-    return render_template('report.html', classes=sorted_classes, all_students=all_students)
-
-@app.route('/api/get_report_data')
-def get_report_data():
-    date_param = request.args.get('date', '')
-    class_param = request.args.get('class', '')
-    
-    url = f"{APPS_SCRIPT_URL}?action=getAttendance&date={date_param}&class={quote(class_param)}"
-    
-    try:
-        res = requests.get(url, timeout=10)
-        data = res.json()
-        return jsonify({"status": "success", "data": data})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
-@app.route('/save_schedule', methods=['POST'])
-def save_schedule():
-    if session.get('role') != 'teacher':
-        return jsonify({"success": False, "message": "ไม่มีสิทธิ์ดำเนินการ"}), 403
-
-    data = request.json or {}
-    class_name = data.get('class_name')
-    schedule = data.get('schedule')
-
-    payload = {
-        "action": "saveSchedule",
-        "class": class_name,
-        "schedule": schedule
-    }
-
-    try:
-        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=10)
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    cur.close()
+    conn.close()
+    return render_template('teacher_dashboard.html', classes=classes, all_students=all_students)
 
 @app.route('/logout')
 def logout():
