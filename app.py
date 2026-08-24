@@ -93,7 +93,55 @@ def login_staff():
         return jsonify({"success": False, "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
 # ---------------------------------------------------------
-# 📥 2. API นำเข้านักเรียนจาก Google Sheet Link ลง Neon
+# 🔴 2. ระบบสำหรับ Admin Dashboard
+# ---------------------------------------------------------
+
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if session.get('role') != 'admin':
+        return redirect(url_for('login_page'))
+    return render_template('admin_dashboard.html')
+
+@app.route('/get_staff_list', methods=['GET'])
+def get_staff_list():
+    if session.get('role') != 'admin':
+        return jsonify([])
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT fullname, username, role FROM staff ORDER BY id DESC")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return jsonify(rows)
+
+@app.route('/create_teacher', methods=['POST'])
+def create_teacher():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'ไม่มีสิทธิ์ทำรายการนี้'})
+    
+    data = request.json or {}
+    fullname = data.get('fullname')
+    username = data.get('username')
+    password = data.get('password')
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO staff (fullname, username, password, role) VALUES (%s, %s, %s, 'teacher')",
+            (fullname, username, password)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'เพิ่มบัญชีอาจารย์เรียบร้อยแล้ว'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Username นี้มีในระบบแล้ว หรือเกิดข้อผิดพลาด'})
+
+# ---------------------------------------------------------
+# 📥 3. API นำเข้านักเรียนจาก Google Sheet Link ลง Neon
 # ---------------------------------------------------------
 
 @app.route('/api/import_students_sheet', methods=['POST'])
@@ -146,7 +194,7 @@ def import_students_sheet():
         return jsonify({"success": False, "message": str(e)}), 500
 
 # ---------------------------------------------------------
-# 🎬 3. จัดการสื่อการสอน & แบบทดสอบ (Quiz)
+# 🎬 4. จัดการสื่อการสอน & แบบทดสอบ (Quiz)
 # ---------------------------------------------------------
 
 @app.route('/get_media', methods=['GET'])
@@ -229,7 +277,7 @@ def submit_quiz():
     return jsonify({"success": True, "score": score, "total": total})
 
 # ---------------------------------------------------------
-# 📝 4. บันทึกเช็คชื่อ & แดชบอร์ด
+# 📝 5. บันทึกเช็คชื่อ & แดชบอร์ด
 # ---------------------------------------------------------
 
 @app.route('/save_attendance', methods=['POST'])
