@@ -146,14 +146,12 @@
             <input type="password" id="staffPassword" class="input-text" placeholder="กรอกรหัสผ่าน">
         </div>
 
-        <!-- 🟢 แก้ไข onclick ให้เรียก loginStaff() -->
         <button id="staffSubmitBtn" class="submit-btn" onclick="loginStaff()">เข้าสู่ระบบ</button>
     </div>
 </div>
 
 <script>
     let currentRole = 'student';
-    // 🟢 แก้ไขโดยเติม | safe ป้องกัน Syntax Error
     const allStudentsData = {{ all_students | tojson | safe }};
 
     function switchRole(role, evt) {
@@ -182,7 +180,6 @@
         }
     }
 
-    // 🟢 ฟังก์ชันยิง Login สำหรับ อาจารย์/แอดมิน
     function loginStaff() {
         const btn = document.getElementById('staffSubmitBtn');
         const originalText = btn.innerHTML;
@@ -221,25 +218,34 @@
         });
     }
 
+    // 🟢 แก้ไขฟังก์ชันดึงรายชื่อให้รองรับ Key ของฐานข้อมูล (fullname)
     function loadStudentsByClass() {
         const selectedClass = document.getElementById('classSelect').value;
         const studentSelect = document.getElementById('studentSelect');
         studentSelect.innerHTML = '';
+
         if (!selectedClass) {
             studentSelect.innerHTML = '<option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>';
             studentSelect.disabled = true;
             return;
         }
-        const filtered = allStudentsData.filter(s => s.class === selectedClass);
+
+        // กรองนักเรียนตามห้อง โดยตรวจสอบ Key fullname หรือ name
+        const filtered = allStudentsData.filter(s => String(s.class) === String(selectedClass));
+
         if (filtered.length > 0) {
             studentSelect.innerHTML = '<option value="">-- กรุณาเลือกชื่อ-นามสกุล --</option>';
             filtered.forEach(s => {
+                const studentName = s.fullname || s.name;
                 const opt = document.createElement('option');
-                opt.value = s.name;
-                opt.textContent = s.name;
+                opt.value = studentName;
+                opt.textContent = studentName;
                 studentSelect.appendChild(opt);
             });
             studentSelect.disabled = false;
+        } else {
+            studentSelect.innerHTML = '<option value="">-- ไม่พบรายชื่อในชั้นเรียนนี้ --</option>';
+            studentSelect.disabled = true;
         }
     }
 
@@ -270,47 +276,45 @@
     }
 
     function submitLogin() {
-    const studentName = document.getElementById('studentSelect').value;
-    const fullPin = document.getElementById('pin1').value + 
-                    document.getElementById('pin2').value + 
-                    document.getElementById('pin3').value + 
-                    document.getElementById('pin4').value;
+        const studentName = document.getElementById('studentSelect').value;
+        const fullPin = document.getElementById('pin1').value + 
+                        document.getElementById('pin2').value + 
+                        document.getElementById('pin3').value + 
+                        document.getElementById('pin4').value;
 
-    if (!studentName || fullPin.length < 4) {
-        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-        return;
-    }
+        if (!studentName || fullPin.length < 4) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
 
-    const btn = document.getElementById('studentSubmitBtn');
-    const originalText = btn.innerHTML;
+        const btn = document.getElementById('studentSubmitBtn');
+        const originalText = btn.innerHTML;
 
-    // เปลี่ยนเป็นสถานะ Loading
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner"></span> กำลังเข้าสู่ระบบ...`;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> กำลังเข้าสู่ระบบ...`;
 
-    fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullname: studentName, pin: fullPin })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = '/dashboard';
-        } else {
-            alert(data.message);
-            // คืนค่าปุ่มเดิมเมื่อล็อกอินไม่สำเร็จ
+        fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullname: studentName, pin: fullPin })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/dashboard';
+            } else {
+                alert(data.message);
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
             btn.disabled = false;
             btn.innerHTML = originalText;
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    });
-}
+        });
+    }
 </script>
 
 </body>
