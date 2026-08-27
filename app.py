@@ -7,6 +7,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
+
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_student_app'
 
@@ -231,41 +232,45 @@ def get_media():
     student_id = session.get('student_id')
     
     conn = get_db()
-    # รองรับการดึงข้อมูลคืนค่าเป็น Dict ของ psycopg2 / psycopg
-    try:
-        cur = conn.cursor(cursor_factory=RealDictCursor) # หากใช้ psycopg2
-    except:
-        cur = conn.cursor(dictionary=True) # หากใช้ mysql-connector เดิม
+    # กำหนด RealDictCursor เพื่อคืนค่าผลลัพธ์เป็น Dictionary ให้แปลงเป็น JSON ได้ถูกต้อง
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    query = """
-        SELECT 
-            m.id, 
-            m.subject, 
-            m.title, 
-            m.url, 
-            q.id AS quiz_id,
-            CASE WHEN vv.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_watched,
-            qs.score AS quiz_score,
-            (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS total_questions
-        FROM media m
-        LEFT JOIN quizzes q ON m.id = q.media_id
-        LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id = %s
-        LEFT JOIN (
-            SELECT student_id, quiz_id, MAX(score) as score 
-            FROM quiz_scores 
-            WHERE student_id = %s 
-            GROUP BY student_id, quiz_id
-        ) qs ON q.id = qs.quiz_id
-        WHERE m.class = %s OR %s = ''
-    """
-    
-    cur.execute(query, (student_id, student_id, student_class, student_class))
-    media_list = cur.fetchall()
-    
-    cur.close()
-    conn.close()
-    
-    return jsonify(media_list)
+    try:
+        query = """
+            SELECT 
+                m.id, 
+                m.subject, 
+                m.title, 
+                m.url, 
+                q.id AS quiz_id,
+                CASE WHEN vv.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_watched,
+                qs.score AS quiz_score,
+                COALESCE((SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id), 0) AS total_questions
+            FROM media m
+            LEFT JOIN quizzes q ON m.id = q.media_id
+            LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id = %s
+            LEFT JOIN (
+                SELECT student_id, quiz_id, MAX(score) as score 
+                FROM quiz_scores 
+                WHERE student_id = %s 
+                GROUP BY student_id, quiz_id
+            ) qs ON q.id = qs.quiz_id
+            WHERE m.class = %s OR %s = '' OR %s IS NULL
+        """
+        
+        cur.execute(query, (student_id, student_id, student_class, student_class, student_class))
+        media_list = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(media_list)
+        
+    except Exception as e:
+        print("Error in /get_media:", e)
+        if cur: cur.close()
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
 @app.route('/save_media', methods=['POST'])
 def save_media():
     data = request.json or {}
