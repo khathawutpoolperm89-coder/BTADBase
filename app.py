@@ -196,25 +196,76 @@ def import_students_sheet():
 # ---------------------------------------------------------
 # 🎬 4. จัดการสื่อการสอน & แบบทดสอบ (Quiz)
 # ---------------------------------------------------------
+# 🟢 1. API บันทึกสถานะการดูวิดีโอ (สำหรับ PostgreSQL / Neon Tech)
+@app.route('/api/mark_watched', methods=['POST'])
+def mark_watched():
+    if 'student_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    media_id = data.get('media_id')
+    student_id = session['student_id']
 
-@app.route('/get_media', methods=['GET'])
-def get_media():
-    student_class = request.args.get('class', '')
     conn = get_db()
     cur = conn.cursor()
     
-    cur.execute("""
-        SELECT m.id, m.subject, m.title, m.url, q.id AS quiz_id 
-        FROM media m
-        LEFT JOIN quizzes q ON m.id = q.media_id
-        WHERE LOWER(m.class) = LOWER(%s) OR LOWER(m.class) = 'all' OR %s = ''
-    """, (student_class, student_class))
+    # ใช้ ON CONFLICT สำหรับ PostgreSQL
+    cur.execute('''
+        INSERT INTO video_views (student_id, media_id, watched_at)
+        VALUES (%s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (student_id, media_id) 
+        DO UPDATE SET watched_at = CURRENT_TIMESTAMP
+    ''', (student_id, media_id))
     
-    videos = cur.fetchall()
+    conn.commit()
     cur.close()
     conn.close()
-    return jsonify(videos)
+    
+    return jsonify({'success': True})
 
+
+# 🟢 2. API ดึงสื่อการเรียน + สถานะการดู + คะแนนสอบล่าสุด
+@app.route('/get_media', methods=['GET'])
+def get_media():
+    student_class = request.args.get('class', '')
+    student_id = session.get('student_id')
+    
+    conn = get_db()
+    # รองรับการดึงข้อมูลคืนค่าเป็น Dict ของ psycopg2 / psycopg
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor) # หากใช้ psycopg2
+    except:
+        cur = conn.cursor(dictionary=True) # หากใช้ mysql-connector เดิม
+
+    query = """
+        SELECT 
+            m.id, 
+            m.subject, 
+            m.title, 
+            m.url, 
+            q.id AS quiz_id,
+            CASE WHEN vv.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_watched,
+            qs.score AS quiz_score,
+            (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS total_questions
+        FROM media m
+        LEFT JOIN quizzes q ON m.id = q.media_id
+        LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id = %s
+        LEFT JOIN (
+            SELECT student_id, quiz_id, MAX(score) as score 
+            FROM quiz_scores 
+            WHERE student_id = %s 
+            GROUP BY student_id, quiz_id
+        ) qs ON q.id = qs.quiz_id
+        WHERE m.class = %s OR %s = ''
+    """
+    
+    cur.execute(query, (student_id, student_id, student_class, student_class))
+    media_list = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return jsonify(media_list)
 @app.route('/save_media', methods=['POST'])
 def save_media():
     data = request.json or {}

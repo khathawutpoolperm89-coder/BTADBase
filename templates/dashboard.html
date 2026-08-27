@@ -8,7 +8,18 @@
         .container { max-width: 1000px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; background: #007bff; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        /* Progress & Status Badges */
+        .progress-bar-bg { background: #e9ecef; border-radius: 10px; height: 12px; overflow: hidden; margin-top: 5px; }
+        .progress-bar-fill { background: #28a745; height: 100%; width: 0%; transition: width 0.4s ease; }
+        .badge-status { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; display: inline-block; }
+        .status-watched { background: #e3f2fd; color: #0d6efd; }
+        .status-passed { background: #d1e7dd; color: #0f5132; }
+        .status-failed { background: #f8d7da; color: #842029; }
+        .status-pending { background: #fff3cd; color: #664d03; }
     </style>
+    <!-- โหลด YouTube Iframe API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
 
@@ -21,10 +32,22 @@
         <a href="/logout" style="background:#dc3545; color:white; padding:8px 15px; border-radius:5px; text-decoration:none;">ออกจากระบบ</a>
     </div>
 
+    <!-- ส่วนสรุปความคืบหน้า (Progress Overall) -->
+    <div class="card">
+        <h3>📊 ความคืบหน้าการเรียนของคุณ</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="progressText" style="font-weight: bold;">ความคืบหน้าทั้งหมด: 0%</span>
+            <span id="scoreOverview" style="font-size: 14px; color: #555;">ทำแบบทดสอบแล้ว: 0 เรื่อง</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div id="overallProgressBar" class="progress-bar-fill"></div>
+        </div>
+    </div>
+
     <!-- สื่อการเรียน & แบบทดสอบ -->
     <div class="card">
         <h3>📚 สื่อการเรียนการสอน & แบบทดสอบหลังเรียน</h3>
-        <div id="mediaContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+        <div id="mediaContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
             <p style="color: #777;">กำลังโหลดสื่อการเรียน...</p>
         </div>
     </div>
@@ -45,54 +68,131 @@
 <script>
     const userRoom = "{{ data.room }}";
     let currentQuizId = null;
+    let players = {};
+    let mediaList = [];
 
     document.addEventListener("DOMContentLoaded", function() {
         loadStudentMedia(userRoom);
     });
 
-    // 🟢 ฟังก์ชันแปลง URL จาก YouTube ทุกรูปแบบให้เป็น Embed URL
-    function formatYoutubeUrl(url) {
+    function extractYoutubeId(url) {
         if (!url) return '';
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
-
-        if (match && match[2].length === 11) {
-            return `https://www.youtube.com/embed/${match[2]}`;
-        }
-        return url;
+        return (match && match[2].length === 11) ? match[2] : null;
     }
 
     function loadStudentMedia(studentClass) {
         fetch(`/get_media?class=${encodeURIComponent(studentClass || '')}`)
             .then(res => res.json())
             .then(videos => {
+                mediaList = videos || [];
                 const container = document.getElementById('mediaContainer');
                 container.innerHTML = '';
                 
-                if (!videos || videos.length === 0) {
+                if (mediaList.length === 0) {
                     container.innerHTML = '<p style="color: #777; grid-column: 1/-1;">ยังไม่มีสื่อการเรียนสำหรับห้องนี้</p>';
                     return;
                 }
 
-                videos.forEach(v => {
-                    // 🟢 แปลง URL ก่อนนำไปใส่ใน iframe
-                    const embedUrl = formatYoutubeUrl(v.url);
+                let completedCount = 0;
+
+                mediaList.forEach((v, idx) => {
+                    const videoId = extractYoutubeId(v.url);
+                    const iframeId = `ytplayer_${v.id || idx}`;
+                    
+                    // คำนวณสถานะและคะแนน
+                    let quizStatusHtml = '<span class="badge-status status-pending">ยังไม่ได้ทำข้อสอบ</span>';
+                    if (v.quiz_score !== undefined && v.quiz_score !== null) {
+                        const scorePercent = (v.quiz_score / v.total_questions) * 100;
+                        if (scorePercent >= 70) {
+                            quizStatusHtml = `<span class="badge-status status-passed">ผ่านเกณฑ์ (${v.quiz_score}/${v.total_questions} - ${scorePercent.toFixed(0)}%)</span>`;
+                        } else {
+                            quizStatusHtml = `<span class="badge-status status-failed">ไม่ผ่านเกณฑ์ (${v.quiz_score}/${v.total_questions} - ${scorePercent.toFixed(0)}%)</span>`;
+                        }
+                    }
+
+                    if (v.is_watched || (v.quiz_score !== undefined && v.quiz_score !== null)) {
+                        completedCount++;
+                    }
 
                     const card = `
-                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
-                            <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${v.subject}</span>
-                            <h4 style="margin: 8px 0; font-size: 15px;">${v.title}</h4>
-                            <iframe width="100%" height="180" src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="border-radius: 6px;"></iframe>
-                            ${v.quiz_id ? `
-                                <button onclick="openQuiz(${v.quiz_id})" style="width:100%; margin-top:10px; background:#28a745; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">
-                                    📝 ทำแบบทดสอบหลังเรียน
-                                </button>
-                            ` : ''}
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${v.subject}</span>
+                                    <span id="watch_status_${v.id}" class="badge-status ${v.is_watched ? 'status-watched' : 'status-pending'}">
+                                        ${v.is_watched ? '✓ ดูวิดีโอแล้ว' : 'ยังไม่ได้ดู'}
+                                    </span>
+                                </div>
+                                <h4 style="margin: 8px 0; font-size: 15px;">${v.title}</h4>
+                                <div id="${iframeId}"></div>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <div style="margin-bottom: 5px;">${quizStatusHtml}</div>
+                                ${v.quiz_id ? `
+                                    <button onclick="openQuiz(${v.quiz_id})" style="width:100%; background:#28a745; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold;">
+                                        📝 ${v.quiz_score !== null ? 'ทำแบบทดสอบใหม่' : 'ทำแบบทดสอบหลังเรียน'}
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     `;
                     container.innerHTML += card;
+
+                    // โหลด YouTube Player แบบ API
+                    setTimeout(() => {
+                        if (window.YT && YT.Player && videoId) {
+                            players[v.id] = new YT.Player(iframeId, {
+                                height: '180',
+                                width: '100%',
+                                videoId: videoId,
+                                events: { 'onStateChange': (evt) => onPlayerStateChange(evt, v.id) }
+                            });
+                        }
+                    }, 500);
                 });
+
+                // อัปเดต Progress Bar รวม
+                const progress = Math.round((completedCount / mediaList.length) * 100);
+                document.getElementById('overallProgressBar').style.width = `${progress}%`;
+                document.getElementById('progressText').innerText = `ความคืบหน้าทั้งหมด: ${progress}%`;
+                document.getElementById('scoreOverview').innerText = `สำเร็จแล้ว: ${completedCount}/${mediaList.length} เรื่อง`;
             });
+    }
+
+    // ตรวจจับเมื่อเล่นวิดีโอ
+    function onPlayerStateChange(event, mediaId) {
+        if (event.data === YT.PlayerState.PLAYING) {
+            const player = players[mediaId];
+            const checkInterval = setInterval(() => {
+                if (player && player.getCurrentTime) {
+                    const currentTime = player.getCurrentTime();
+                    const duration = player.getDuration();
+                    // ถ้าดูเกิน 70% ให้ถือว่าดูจบแล้ว
+                    if (duration > 0 && (currentTime / duration) >= 0.7) {
+                        markAsWatched(mediaId);
+                        clearInterval(checkInterval);
+                    }
+                }
+            }, 3000);
+        }
+    }
+
+    function markAsWatched(mediaId) {
+        fetch('/api/mark_watched', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ media_id: mediaId })
+        }).then(res => res.json()).then(data => {
+            if(data.success) {
+                const badge = document.getElementById(`watch_status_${mediaId}`);
+                if (badge) {
+                    badge.className = 'badge-status status-watched';
+                    badge.innerText = '✓ ดูวิดีโอแล้ว';
+                }
+            }
+        });
     }
 
     function openQuiz(quizId) {
@@ -109,7 +209,7 @@
                     form.innerHTML += `
                         <div style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
                             <p><strong>ข้อที่ ${index+1}: ${q.question_text}</strong></p>
-                            <label><input type="radio" name="q_${q.id}" value="A"> ก) ${q.option_a}</label><br>
+                            <label><input type="radio" name="q_${q.id}" value="A" required> ก) ${q.option_a}</label><br>
                             <label><input type="radio" name="q_${q.id}" value="B"> ข) ${q.option_b}</label><br>
                             <label><input type="radio" name="q_${q.id}" value="C"> ค) ${q.option_c}</label><br>
                             <label><input type="radio" name="q_${q.id}" value="D"> ง) ${q.option_d}</label>
@@ -136,8 +236,11 @@
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                alert(`🎉 บันทึกคะแนนสำเร็จ!\nคุณได้คะแนน: ${data.score} / ${data.total}`);
+                const percent = (data.score / data.total) * 100;
+                const passText = percent >= 70 ? '🎉 ผ่านเกณฑ์ (70%)' : '❌ ไม่ผ่านเกณฑ์ (ต้องได้ 70% ขึ้นไป)';
+                alert(`บันทึกคะแนนเรียบร้อย!\nคะแนนที่ได้: ${data.score} / ${data.total} (${percent.toFixed(0)}%)\nผลการทดสอบ: ${passText}`);
                 closeQuiz();
+                loadStudentMedia(userRoom); // Reload เพื่ออัปเดตหน้าต่าง
             }
         });
     }
