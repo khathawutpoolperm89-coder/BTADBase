@@ -229,13 +229,21 @@ def mark_watched():
 @app.route('/get_media', methods=['GET'])
 def get_media():
     student_class = request.args.get('class', '')
-    student_id = session.get('student_id')
     
-    conn = get_db()
-    # กำหนด RealDictCursor เพื่อคืนค่าผลลัพธ์เป็น Dictionary ให้แปลงเป็น JSON ได้ถูกต้อง
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    student_id = session.get('student_id')
+    try:
+        student_id = int(student_id) if student_id is not None else 0
+    except (ValueError, TypeError):
+        student_id = 0
+
+    conn = None
+    cur = None
 
     try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # 🟢 ปรับ SQL แก้ชื่อตารางเป็น questions ให้ตรงกับ Database จริง
         query = """
             SELECT 
                 m.id, 
@@ -245,7 +253,7 @@ def get_media():
                 q.id AS quiz_id,
                 CASE WHEN vv.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_watched,
                 qs.score AS quiz_score,
-                COALESCE((SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id), 0) AS total_questions
+                COALESCE((SELECT COUNT(*) FROM questions qq WHERE qq.lesson_id = m.id), 0) AS total_questions
             FROM media m
             LEFT JOIN quizzes q ON m.id = q.media_id
             LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id = %s
@@ -265,12 +273,13 @@ def get_media():
         conn.close()
         
         return jsonify(media_list)
-        
+
     except Exception as e:
-        print("Error in /get_media:", e)
+        print("SQL Error in /get_media:", str(e))
         if cur: cur.close()
         if conn: conn.close()
-        return jsonify({'error': str(e)}), 500
+        return jsonify([]), 200
+    
 @app.route('/save_media', methods=['POST'])
 def save_media():
     data = request.json or {}
@@ -285,53 +294,58 @@ def save_media():
     conn.close()
     return jsonify({"success": True, "message": "บันทึกสื่อเรียบร้อยแล้ว"})
 
-@app.route('/api/get_quiz/<int:quiz_id>', methods=['GET'])
-def get_quiz(quiz_id):
+@app.route('/api/get_quiz/<int:media_id>', methods=['GET'])
+def get_quiz(media_id):
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, title, subject FROM quizzes WHERE id = %s", (quiz_id,))
-    quiz = cur.fetchone()
-    
-    if not quiz:
-        return jsonify({"success": False, "message": "ไม่พบข้อสอบ"}), 404
-        
-    cur.execute("SELECT id, question_text, option_a, option_b, option_c, option_d FROM questions WHERE quiz_id = %s", (quiz_id,))
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    # ดึงคำถามตาม lesson_id/media_id
+    cur.execute("SELECT id, question_text FROM questions WHERE lesson_id = %s", (media_id,))
     questions = cur.fetchall()
+
+    for q in questions:
+        # ดึงตัวเลือก 4 ตัวของแต่ละข้อ
+        cur.execute("SELECT id, option_text, is_correct FROM options WHERE question_id = %s ORDER BY id ASC", (q['id'],))
+        q['options'] = cur.fetchall()
+
     cur.close()
     conn.close()
-    return jsonify({"success": True, "quiz": quiz, "questions": questions})
+    return jsonify({'success': True, 'questions': questions})
 
 @app.route('/api/submit_quiz', methods=['POST'])
 def submit_quiz():
-    data = request.json or {}
-    quiz_id = data.get('quiz_id')
-    user_answers = data.get('answers', {})
-    
-    student_id = session.get('student_id', 'GUEST')
-    student_name = session.get('fullname', 'ไม่ระบุชื่อ')
+    if 'student_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    quiz_id = data.get('quiz_id')  # หรือ media_id
+    answers = data.get('answers')  # { question_id: option_id }
+    student_id = session['student_id']
 
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, correct_option FROM questions WHERE quiz_id = %s", (quiz_id,))
-    questions = cur.fetchall()
-    
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
     score = 0
-    total = len(questions)
-    for q in questions:
-        q_id = str(q['id'])
-        if q_id in user_answers and user_answers[q_id] == q['correct_option']:
+    total = len(answers)
+
+    # ตรวจคำตอบว่า option_id ที่เลือก is_correct == True หรือไม่
+    for q_id, opt_id in answers.items():
+        cur.execute("SELECT is_correct FROM options WHERE id = %s AND question_id = %s", (opt_id, q_id))
+        res = cur.fetchone()
+        if res and res['is_correct']:
             score += 1
 
+    # บันทึกคะแนนลง quiz_scores
     cur.execute("""
-        INSERT INTO quiz_scores (quiz_id, student_id, student_name, score, total_questions)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (quiz_id, student_id, student_name, score, total))
-    
+        INSERT INTO quiz_scores (student_id, quiz_id, score, created_at)
+        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+    """, (student_id, quiz_id, score))
+
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({"success": True, "score": score, "total": total})
 
+    return jsonify({'success': True, 'score': score, 'total': total})
 # ---------------------------------------------------------
 # 📝 5. บันทึกเช็คชื่อ & แดชบอร์ด
 # ---------------------------------------------------------
