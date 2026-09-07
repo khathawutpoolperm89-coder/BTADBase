@@ -1,226 +1,85 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <title>Teacher Dashboard - ระบบอาจารย์</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .tab-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-        .tab-btn { padding: 12px 24px; font-size: 15px; font-weight: bold; color: #64748b; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; }
-        .tab-btn.active { color: #007bff; border-bottom-color: #007bff; }
-        .tab-btn:disabled { color: #94a3b8; cursor: not-allowed; }
-        [hidden] { display: none !important; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ห้องเรียนของฉัน · BTAD</title>
+<style>
+:root{--ink:#172c38;--muted:#627680;--brand:#176b60;--line:#dfe7e7;--bg:#f4f7f6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 "Leelawadee UI","Tahoma",sans-serif}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e5b35a;outline-offset:3px}[hidden]{display:none!important}
+.topbar{background:#fff;border-bottom:1px solid var(--line)}.top-inner{max-width:1180px;margin:auto;display:flex;justify-content:space-between;align-items:center;padding:18px 28px;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.5px}.logo{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--brand);color:#fff}.brand small{display:block;font-weight:400;font-size:11px;color:var(--muted);letter-spacing:1px}.account{display:flex;align-items:center;gap:20px;font-size:13px}.logout{color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:9px;padding:8px 14px}
+main{max-width:1180px;margin:auto;padding:36px 28px 60px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--brand);margin:0 0 8px}h1{font-size:32px;line-height:1.4;letter-spacing:-.6px;margin:0 0 8px}h2{font-size:21px;margin:0}h3{font-size:16px;margin:0 0 8px}p{margin:0}.muted{color:var(--muted);font-size:14px}.intro{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;gap:20px}.pill{background:#e6efeb;color:var(--brand);border-radius:30px;padding:7px 14px;font-size:12px;white-space:nowrap}
+.setup{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:24px;align-items:center;box-shadow:0 4px 16px #172c3804}.step{display:flex;align-items:center;gap:12px}.step-number{border-radius:50%;width:32px;height:32px;display:grid;place-items:center;background:#e8f3ef;color:var(--brand);font-weight:700}.field{display:flex;flex-direction:column;gap:7px;min-width:0}label{font-size:13px;font-weight:700}input,select{width:100%;min-height:46px;padding:10px 12px;border:1px solid #cad6d5;border-radius:9px;background:#fff;color:var(--ink);min-width:0}input:disabled,select:disabled{background:#f1f4f3;color:#8b999e}.hint{font-size:12px;color:var(--muted)}
+.workflow{margin:26px 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}.workflow strong{font-size:14px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.tab-btn{display:flex;text-align:left;align-items:center;gap:13px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:17px;color:var(--ink);min-width:0}.tab-btn strong{font-size:14px;display:block}.tab-btn small{font-size:12px;color:var(--muted)}.tab-icon{font-size:20px;width:40px;height:40px;border-radius:10px;background:#f1f5f3;display:grid;place-items:center;flex-shrink:0}.tab-btn.active{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand);background:#f0f8f4}.tab-btn.active .tab-icon{background:var(--brand);color:#fff}
+.empty{border:1px dashed #c9d8d3;background:#edf4f0;border-radius:16px;text-align:center;padding:48px 24px}.empty-symbol{display:grid;place-items:center;margin:0 auto 16px;width:60px;height:60px;border-radius:18px;background:#fff;color:var(--brand);font-size:28px}.empty h2{margin-bottom:8px}.empty p{max-width:470px;margin:auto}.tab-content{display:none}.tab-content.active{display:block}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}.panel-head{padding:24px;display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line)}.panel-head p{margin-top:4px}.panel-body{padding:24px}.count{font-size:13px;color:var(--brand);background:#edf5f1;border-radius:8px;padding:7px 12px;white-space:nowrap}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;text-align:left}th{background:#f8faf9;color:var(--muted);font-size:12px;font-weight:500}th,td{padding:13px 24px;border-bottom:1px solid #edf1ef}td:first-child{width:75px;color:var(--muted);font-size:13px}td:last-child{width:160px}.status-select{min-height:40px;padding:6px 10px}.panel-footer{padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fcfdfc}.primary{background:var(--brand);color:#fff;border:0;border-radius:9px;padding:12px 20px;font-weight:700;font-size:14px;min-height:46px}.primary:hover:not(:disabled){background:#115449}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.full{grid-column:1/-1}.notice{border-radius:10px;background:#f4f7f6;padding:16px;margin-bottom:22px;font-size:13px;color:var(--muted)}.notice code{background:#e4ece8;border-radius:4px;padding:2px 5px;color:var(--ink)}.feedback{margin-bottom:18px;border-radius:10px;padding:14px 18px;font-size:14px;background:#e5f2ec;color:#155c43}.feedback.error{background:#fff0ee;color:#9e302a}.footer-note{margin-top:24px;font-size:11px;color:#7c8e94;text-align:center}
+@media(max-width:760px){.top-inner{padding:14px 18px}.account{gap:10px}.account span{display:none}main{padding:26px 18px}.intro{align-items:flex-start}.intro .pill{display:none}h1{font-size:27px}.setup{grid-template-columns:1fr 1fr;padding:20px;gap:18px}.setup>.step{grid-column:1/-1}.tabs{gap:8px}.tab-btn{padding:12px 7px;flex-direction:column;text-align:center;gap:7px}.tab-btn small{display:none}.tab-btn strong{font-size:12px}.tab-icon{width:32px;height:32px;font-size:17px}.panel-head,.panel-body{padding:18px}.panel-footer{padding:18px;align-items:stretch;flex-direction:column}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}th,td{padding:12px}td:last-child{width:115px}.empty{padding:34px 18px}.workflow{align-items:flex-start}.workflow .hint{max-width:145px;text-align:right}}
+@media(prefers-reduced-motion:no-preference){button,a{transition:background .15s,border-color .15s}}
+</style>
 </head>
 <body>
-
-    <div class="navbar">
-        <h2>📘 แผงควบคุมอาจารย์ (Teacher Dashboard)</h2>
-        <div>
-            <span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span>
-            <a href="/logout" style="background:#dc3545; color:white; padding:8px 16px; border-radius:6px; text-decoration:none;">ออกจากระบบ</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <label><b>1. เลือกชั้นเรียน:</b></label>
-        <select id="classSelect" onchange="selectClass()">
-            <option value="">-- กรุณาเลือกชั้นเรียน --</option>
-            {% for c in classes %}
-                <option value="{{ c }}">{{ c }}</option>
-            {% endfor %}
-        </select>
-        <label style="margin-left:20px;"><b>2. วันที่:</b></label>
-        <input type="date" id="dateSelect" onchange="renderAttendanceTable()" disabled>
-    </div>
-
-    <div id="classHint" class="card" role="status">กรุณาเลือกห้องเรียนก่อน เพื่อใช้ฟังก์ชันเช็คชื่อ นำเข้ารายชื่อ และสื่อการเรียน</div>
-    <p id="classContext" role="status" hidden></p>
-
-    <!-- แถบเมนูแท็บ -->
-    <div class="tab-container">
-        <button class="tab-btn" disabled onclick="switchTab('attendance', event)">📝 เช็คชื่อนักเรียน</button>
-        <button class="tab-btn" disabled onclick="switchTab('import', event)">📥 นำเข้ารายชื่อ (Google Sheet)</button>
-        <button class="tab-btn" disabled onclick="switchTab('media', event)">🎬 สื่อการเรียน (YouTube)</button>
-    </div>
-
-    <!-- แท็บ 1: เช็คชื่อ -->
-    <div id="tab-attendance" class="tab-content">
-        <div class="card">
-            <h3>เช็คชื่อนักเรียน</h3>
-            <table>
-                <thead>
-                    <tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>สถานะ</th></tr>
-                </thead>
-                <tbody id="studentTableBody"></tbody>
-            </table>
-            <button onclick="saveAttendance()" style="margin-top:15px; background:#007bff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">💾 บันทึกการเช็คชื่อลง Neon</button>
-        </div>
-    </div>
-
-    <!-- แท็บ 2: นำเข้ารายชื่อนักเรียนจาก Google Sheet -->
-    <div id="tab-import" class="tab-content">
-        <div class="card">
-            <h3>📥 นำเข้ารายชื่อนักเรียนเข้า Neon DB</h3>
-            <p style="color:#666; font-size:14px;">วางลิงก์ Google Sheet ที่ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์" (ต้องมี Column: student_id, fullname, class — นำเข้าเฉพาะแถวที่ class ตรงกับห้องที่เลือก)</p>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="sheetUrlInput" placeholder="วางลิงก์ Google Sheet..." style="flex:1; padding:10px; border-radius:6px; border:1px solid #ccc;">
-                <button onclick="submitImportSheet()" style="background:#28a745; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">นำเข้าข้อมูล</button>
-            </div>
-            <div id="importResult" style="margin-top:15px;"></div>
-        </div>
-    </div>
-
-    <!-- แท็บ 3: เพิ่มสื่อการสอน -->
-    <div id="tab-media" class="tab-content">
-        <div class="card">
-            <h3>🎬 เพิ่มสื่อการเรียนการสอน</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px;">
-                <input type="text" id="mediaSubject" placeholder="ชื่อวิชา">
-                <input type="text" id="mediaTitle" placeholder="ชื่อหัวข้อ">
-                <input type="text" id="mediaUrl" placeholder="ลิงก์ YouTube">
-                <button onclick="uploadMedia()" style="background:#28a745; color:white; border:none; padding:10px 20px;">บันทึกสื่อ</button>
-            </div>
-        </div>
-    </div>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<header class="topbar"><div class="top-inner"><div class="brand"><span class="logo" aria-hidden="true">B</span><div>BTAD<small>TEACHER WORKSPACE</small></div></div><div class="account"><span>สวัสดี, <strong>{{ session['fullname'] }}</strong></span><a class="logout" href="/logout">ออกจากระบบ</a></div></div></header>
+<main>
+<div class="intro"><div><p class="eyebrow">MY CLASSROOM</p><h1>ห้องเรียนของฉัน</h1><p class="muted">จัดการเช็คชื่อ รายชื่อนักเรียน และสื่อการสอนในที่เดียว</p></div><span class="pill">พื้นที่สำหรับอาจารย์</span></div>
+<section class="setup" aria-label="เลือกห้องเรียน"><div class="step"><span class="step-number">1</span><div><h3>เริ่มต้นที่ห้องเรียน</h3><p class="hint">เลือกห้องที่ต้องการจัดการ</p></div></div><div class="field"><label for="classSelect">ห้องเรียน</label><select id="classSelect" onchange="selectClass()"><option value="">เลือกห้องเรียน…</option>{% for c in classes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}</select></div><div class="field"><label for="dateSelect">วันที่เช็คชื่อ</label><input type="date" id="dateSelect" disabled onchange="dateChanged()"></div></section>
+<div class="workflow"><strong>2 · เลือกสิ่งที่ต้องการทำ</strong><span id="classContext" class="hint" role="status">เลือกห้องเรียนเพื่อเริ่มใช้งาน</span></div>
+<nav class="tabs" aria-label="ฟังก์ชันห้องเรียน">
+<button class="tab-btn" data-tab="attendance" aria-controls="tab-attendance" aria-pressed="false" disabled onclick="switchTab('attendance')"><span class="tab-icon" aria-hidden="true">✓</span><span><strong>เช็คชื่อนักเรียน</strong><small>บันทึกการเข้าเรียนประจำวัน</small></span></button>
+<button class="tab-btn" data-tab="import" aria-controls="tab-import" aria-pressed="false" disabled onclick="switchTab('import')"><span class="tab-icon" aria-hidden="true">↥</span><span><strong>นำเข้ารายชื่อ</strong><small>เชื่อมต่อจาก Google Sheets</small></span></button>
+<button class="tab-btn" data-tab="media" aria-controls="tab-media" aria-pressed="false" disabled onclick="switchTab('media')"><span class="tab-icon" aria-hidden="true">▷</span><span><strong>สื่อการเรียน</strong><small>เพิ่มวิดีโอสำหรับห้องเรียน</small></span></button>
+</nav>
+<div id="feedback" class="feedback" role="status" hidden></div>
+<section id="classHint" class="empty"><div class="empty-symbol" aria-hidden="true">▦</div><h2>วันนี้จะดูแลห้องไหนดี?</h2><p class="muted">{% if classes %}เลือกห้องเรียนด้านบน แล้วเริ่มเช็คชื่อ นำเข้ารายชื่อ หรือเพิ่มสื่อการสอนได้เลย{% else %}ยังไม่มีห้องเรียนในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มห้องเรียนและรายชื่อนักเรียน{% endif %}</p></section>
+<section id="tab-attendance" class="tab-content panel" aria-label="เช็คชื่อนักเรียน"><div class="panel-head"><div><h2>เช็คชื่อนักเรียน</h2><p class="muted">ตรวจสอบสถานะให้ครบก่อนบันทึก</p></div><span id="studentCount" class="count">0 คน</span></div><div class="table-wrap"><table><thead><tr><th scope="col">ลำดับ</th><th scope="col">ชื่อ–นามสกุล</th><th scope="col">สถานะ</th></tr></thead><tbody id="studentTableBody"></tbody></table></div><div class="panel-footer"><p class="hint">รายการใหม่เริ่มที่ “มา” · กดบันทึกเมื่อเช็คชื่อครบแล้ว</p><button id="saveAttendanceBtn" class="primary" onclick="saveAttendance()">บันทึกการเช็คชื่อ</button></div></section>
+<section id="tab-import" class="tab-content panel" aria-label="นำเข้ารายชื่อ"><div class="panel-head"><div><h2>นำเข้ารายชื่อนักเรียน</h2><p class="muted">เพิ่มหรืออัปเดตรายชื่อจาก Google Sheets</p></div></div><form onsubmit="submitImportSheet(event)"><div class="panel-body"><div class="notice">ตั้งค่าการแชร์ Sheet เป็น “ทุกคนที่มีลิงก์” และเตรียมคอลัมน์ <code>student_id</code>, <code>fullname</code>, <code>class</code><br>ระบบจะนำเข้าเฉพาะแถวที่ class ตรงกับห้องที่เลือก</div><div class="field"><label for="sheetUrlInput">ลิงก์ Google Sheets</label><input type="url" id="sheetUrlInput" required placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"><span class="hint">รหัสนักเรียนเดิมจะได้รับการอัปเดตข้อมูล</span></div></div><div class="panel-footer"><p class="hint">ตรวจสอบห้องเรียนที่เลือกก่อนนำเข้า</p><button class="primary" type="submit">นำเข้ารายชื่อ</button></div></form></section>
+<section id="tab-media" class="tab-content panel" aria-label="สื่อการเรียน"><div class="panel-head"><div><h2>เพิ่มสื่อการเรียน</h2><p class="muted">ส่งต่อวิดีโอ YouTube ให้นักเรียนในห้องที่เลือก</p></div></div><form onsubmit="uploadMedia(event)"><div class="panel-body form-grid"><div class="field"><label for="mediaSubject">ชื่อวิชา</label><input id="mediaSubject" required placeholder="เช่น คณิตศาสตร์"></div><div class="field"><label for="mediaTitle">หัวข้อบทเรียน</label><input id="mediaTitle" required placeholder="เช่น สมการเชิงเส้น"></div><div class="field full"><label for="mediaUrl">ลิงก์วิดีโอ YouTube</label><input type="url" id="mediaUrl" required placeholder="https://www.youtube.com/watch?v=…" autocomplete="off"></div></div><div class="panel-footer"><p class="hint">สื่อนี้จะผูกกับห้องเรียนที่เลือกไว้</p><button class="primary" type="submit">บันทึกสื่อการเรียน</button></div></form></section>
+<p class="footer-note">BTAD · ระบบดูแลการเรียนสำหรับอาจารย์</p>
+</main>
 <script>
-    const allStudentsData = {{ all_students | tojson }};
-
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('dateSelect').valueAsDate = new Date();
-        document.getElementById('classSelect').value = '';
-        selectClass();
-    });
-
-    function requireClass() {
-        if (document.getElementById('classSelect').value) return true;
-        Swal.fire('เลือกห้องเรียนก่อน', 'กรุณาเลือกห้องเรียนเพื่อใช้งานฟังก์ชันนี้', 'warning');
-        document.getElementById('classSelect').focus();
-        return false;
-    }
-
-    function selectClass() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const ready = Boolean(selectedClass);
-        document.getElementById('dateSelect').disabled = !ready;
-        document.getElementById('classHint').hidden = ready;
-        const context = document.getElementById('classContext');
-        context.hidden = !ready;
-        context.textContent = `ห้องที่เลือก: ${selectedClass} — เลือกฟังก์ชันที่ต้องการใช้งาน`;
-        document.querySelectorAll('.tab-btn').forEach(el => {
-            el.disabled = !ready;
-            el.classList.remove('active');
-        });
-        document.querySelectorAll('.tab-content').forEach(el => {
-            el.classList.remove('active');
-            el.querySelectorAll('input, button, select').forEach(control => control.disabled = !ready);
-        });
-        ['sheetUrlInput', 'mediaSubject', 'mediaTitle', 'mediaUrl'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('importResult').textContent = '';
-        renderAttendanceTable();
-        if (ready) switchTab('attendance', {currentTarget: document.querySelector('.tab-btn')});
-    }
-
-    function switchTab(tabName, event) {
-        if (!requireClass()) return;
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${tabName}`).classList.add('active');
-        event.currentTarget.classList.add('active');
-    }
-
-    function renderAttendanceTable() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const tbody = document.getElementById('studentTableBody');
-        tbody.innerHTML = '';
-
-        const filtered = allStudentsData.filter(s => s.class === selectedClass);
-        filtered.forEach((student, index) => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td><strong class="student-name">${student.name}</strong></td>
-                    <td>
-                        <select class="status-select">
-                            <option value="มา">มา</option>
-                            <option value="สาย">สาย</option>
-                            <option value="ขาด">ขาด/ลา</option>
-                        </select>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    function saveAttendance() {
-        if (!requireClass()) return;
-        const selectedDate = document.getElementById('dateSelect').value;
-        const selectedClass = document.getElementById('classSelect').value;
-        const rows = document.querySelectorAll('#studentTableBody tr');
-        const records = [];
-
-        rows.forEach(r => {
-            records.push({
-                name: r.querySelector('.student-name').innerText,
-                status: r.querySelector('.status-select').value
-            });
-        });
-
-        fetch('/save_attendance', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ date: selectedDate, class: selectedClass, records: records })
-        })
-        .then(res => res.json())
-        .then(data => Swal.fire(data.success ? 'สำเร็จ' : 'เกิดข้อผิดพลาด', data.message, data.success ? 'success' : 'error'));
-    }
-
-    function submitImportSheet() {
-        if (!requireClass()) return;
-        const url = document.getElementById('sheetUrlInput').value;
-        const resultDiv = document.getElementById('importResult');
-        resultDiv.innerHTML = '⏳ กำลังนำเข้าข้อมูล...';
-
-        fetch('/api/import_students_sheet', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ sheet_url: url, class: document.getElementById('classSelect').value })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.success) {
-                resultDiv.innerHTML = `<b style="color:green;">✅ ${data.message}</b>`;
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                resultDiv.innerHTML = `<b style="color:red;">❌ ${data.message}</b>`;
-            }
-        });
-    }
-
-    function uploadMedia() {
-        if (!requireClass()) return;
-        fetch('/save_media', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                class_name: document.getElementById('classSelect').value,
-                subject: document.getElementById('mediaSubject').value,
-                title: document.getElementById('mediaTitle').value,
-                video_url: document.getElementById('mediaUrl').value
-            })
-        })
-        .then(res => res.json())
-        .then(data => Swal.fire(data.success ? 'สำเร็จ' : 'เกิดข้อผิดพลาด', data.message, data.success ? 'success' : 'error'));
-    }
+const allStudentsData = {{ all_students | tojson }};
+const $ = id => document.getElementById(id);
+let currentClass = '', currentDate = '', dirty = false, busy = false, attendanceSaved = false;
+function notify(message, error=false) { $('feedback').textContent=message; $('feedback').className='feedback'+(error?' error':''); $('feedback').hidden=false; }
+function requireClass(){if(currentClass)return true;notify('กรุณาเลือกห้องเรียนก่อน',true);$('classSelect').focus();return false;}
+function confirmDiscard(){return !dirty || window.confirm('มีข้อมูลที่ยังไม่ได้บันทึก ต้องการเปลี่ยนห้องหรือวันที่และล้างข้อมูลหรือไม่?');}
+function selectClass(){
+ if(busy || !confirmDiscard()){$('classSelect').value=currentClass;return;}
+ currentClass=$('classSelect').value;dirty=false;attendanceSaved=false;
+ $('dateSelect').disabled=!currentClass;$('classHint').hidden=!!currentClass;
+ $('classContext').textContent=currentClass?'ห้อง '+currentClass:'เลือกห้องเรียนเพื่อเริ่มใช้งาน';
+ $('feedback').hidden=true;
+ document.querySelectorAll('.tab-btn').forEach(el=>{el.disabled=!currentClass;el.classList.remove('active');el.setAttribute('aria-pressed','false');});
+ document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+ document.querySelectorAll('form').forEach(form=>form.reset());
+ renderAttendanceTable();if(currentClass)switchTab('attendance');
+}
+function dateChanged(){if(busy||!confirmDiscard()){$('dateSelect').value=currentDate;return;}currentDate=$('dateSelect').value;dirty=false;attendanceSaved=false;renderAttendanceTable();}
+function switchTab(name){if(!requireClass())return;document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id==='tab-'+name));document.querySelectorAll('.tab-btn').forEach(el=>{const active=el.dataset.tab===name;el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active));});}
+function renderAttendanceTable(){
+ $('saveAttendanceBtn').textContent='บันทึกการเช็คชื่อ';
+ const students=allStudentsData.filter(s=>s.class===currentClass);const tbody=$('studentTableBody');tbody.replaceChildren();
+ $('studentCount').textContent=students.length+' คน';
+ students.forEach((student,index)=>{const row=document.createElement('tr');const number=document.createElement('td');number.textContent=index+1;const name=document.createElement('td');name.className='student-name';name.textContent=student.name;const cell=document.createElement('td');const select=document.createElement('select');select.className='status-select';select.setAttribute('aria-label','สถานะของ '+student.name);['มา','สาย','ขาด'].forEach(status=>select.add(new Option(status==='ขาด'?'ขาด / ลา':status,status)));select.onchange=()=>{dirty=true;};cell.append(select);row.append(number,name,cell);tbody.append(row);});
+ if(!students.length){const row=tbody.insertRow();const cell=row.insertCell();cell.colSpan=3;cell.textContent='ยังไม่มีรายชื่อนักเรียนในห้องนี้';}
+ $('saveAttendanceBtn').disabled=!students.length||attendanceSaved;
+}
+async function send(url,payload,button){
+ if(busy)return false;busy=true;const label=button.textContent;
+ const controls=[...document.querySelectorAll('button,input,select')];const previous=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);button.textContent='กำลังบันทึก…';
+ try{const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});let data;try{data=await response.json();}catch{throw new Error('เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์ กรุณาลองใหม่');}if(!response.ok||!data.success)throw new Error(data.message||'บันทึกไม่สำเร็จ');notify('ห้อง '+currentClass+' · '+data.message);dirty=[...document.querySelectorAll('form input')].some(el=>el.value.trim());return true;}
+ catch(error){notify(error.message||'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่',true);return false;}
+ finally{controls.forEach((el,i)=>el.disabled=previous[i]);button.textContent=label;busy=false;}
+}
+async function saveAttendance(){
+ if(!requireClass()||busy||attendanceSaved)return;
+ if(!$('dateSelect').value){notify('กรุณาเลือกวันที่เช็คชื่อ',true);$('dateSelect').focus();return;}
+ const records=[...document.querySelectorAll('#studentTableBody tr')].filter(r=>r.querySelector('.status-select')).map(r=>({name:r.querySelector('.student-name').textContent,status:r.querySelector('select').value}));
+ if(!records.length)return;
+ if(await send('/save_attendance',{date:$('dateSelect').value,class:currentClass,records},$('saveAttendanceBtn'))){attendanceSaved=true;$('saveAttendanceBtn').disabled=true;$('saveAttendanceBtn').textContent='บันทึกแล้ว';}
+}
+async function submitImportSheet(event){event.preventDefault();if(!requireClass()||busy)return;const button=event.submitter||event.target.querySelector('button');if(await send('/api/import_students_sheet',{sheet_url:$('sheetUrlInput').value.trim(),class:currentClass},button)){sessionStorage.setItem('teacherImportedClass',currentClass);dirty=false;location.reload();}}
+async function uploadMedia(event){event.preventDefault();if(!requireClass()||busy)return;const url=$('mediaUrl').value.trim();const hostname=new URL(url).hostname;if(!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(hostname)){notify('กรุณาใช้ลิงก์วิดีโอจาก YouTube',true);return;}if(await send('/save_media',{class_name:currentClass,subject:$('mediaSubject').value.trim(),title:$('mediaTitle').value.trim(),video_url:url},event.submitter||event.target.querySelector('button'))){event.target.reset();dirty=[...document.querySelectorAll('form input')].some(el=>el.value.trim());}}
+document.addEventListener('DOMContentLoaded',()=>{const now=new Date();currentDate=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');$('dateSelect').value=currentDate;$('classSelect').value='';selectClass();document.querySelectorAll('form input').forEach(el=>el.addEventListener('input',()=>dirty=true));const imported=sessionStorage.getItem('teacherImportedClass');if(imported){sessionStorage.removeItem('teacherImportedClass');$('classSelect').value=imported;selectClass();notify('นำเข้ารายชื่อเรียบร้อยแล้ว');}});
+window.addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
 </script>
 </body>
 </html>
