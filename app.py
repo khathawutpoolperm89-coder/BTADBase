@@ -234,10 +234,7 @@ def get_media():
     student_class = request.args.get('class', '')
     
     student_id = session.get('student_id')
-    try:
-        student_id = int(student_id) if student_id is not None else 0
-    except (ValueError, TypeError):
-        student_id = 0
+    student_id = str(student_id) if student_id is not None else ''
 
     conn = None
     cur = None
@@ -259,11 +256,11 @@ def get_media():
                 COALESCE((SELECT COUNT(*) FROM questions qq WHERE qq.lesson_id = m.id), 0) AS total_questions
             FROM media m
             LEFT JOIN quizzes q ON m.id = q.media_id
-            LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id = %s
+            LEFT JOIN video_views vv ON m.id = vv.media_id AND vv.student_id::text = %s
             LEFT JOIN (
                 SELECT student_id, quiz_id, MAX(score) as score 
                 FROM quiz_scores 
-                WHERE student_id = %s 
+                WHERE student_id::text = %s 
                 GROUP BY student_id, quiz_id
             ) qs ON q.id = qs.quiz_id
             WHERE m.class = %s OR %s = '' OR %s IS NULL
@@ -281,7 +278,7 @@ def get_media():
         print("SQL Error in /get_media:", str(e))
         if cur: cur.close()
         if conn: conn.close()
-        return jsonify([]), 200
+        return jsonify({'success': False, 'message': 'โหลดสื่อการเรียนไม่สำเร็จ กรุณาลองใหม่'}), 500
     
 @app.route('/save_media', methods=['POST'])
 def save_media():
