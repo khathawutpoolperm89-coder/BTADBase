@@ -149,6 +149,9 @@ def create_teacher():
 def import_students_sheet():
     data = request.json or {}
     sheet_url = data.get('sheet_url')
+    selected_class = str(data.get('class') or '').strip()
+    if not selected_class:
+        return jsonify({'success': False, 'message': 'กรุณาเลือกห้องเรียนก่อนนำเข้ารายชื่อ'}), 400
 
     if not sheet_url:
         return jsonify({"success": False, "message": "กรุณาระบุ URL ของ Google Sheet"}), 400
@@ -177,7 +180,7 @@ def import_students_sheet():
             s_class = str(row.get('class', '')).strip()
             n_id = str(row.get('national_id', '')).strip() or None
 
-            if s_id and fname and s_class:
+            if s_id and fname and s_class == selected_class:
                 cur.execute("""
                     INSERT INTO students (student_id, fullname, class, national_id)
                     VALUES (%s, %s, %s, %s)
@@ -283,6 +286,8 @@ def get_media():
 @app.route('/save_media', methods=['POST'])
 def save_media():
     data = request.json or {}
+    if not str(data.get('class_name') or '').strip():
+        return jsonify({'success': False, 'message': 'กรุณาเลือกห้องเรียนก่อนบันทึกสื่อ'}), 400
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
@@ -356,6 +361,8 @@ def save_attendance():
     attendance_date = data.get('date')
     selected_class = data.get('class')
     records = data.get('records', [])
+    if not str(selected_class or '').strip():
+        return jsonify({'success': False, 'message': 'กรุณาเลือกห้องเรียนก่อนเช็คชื่อ'}), 400
 
     conn = get_db()
     cur = conn.cursor()
