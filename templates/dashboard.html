@@ -66,7 +66,7 @@
 </div>
 
 <script>
-    const userRoom = "{{ data.room }}";
+    const userRoom = {{ data.room | tojson }};
     let currentQuizId = null;
     let players = {};
     let mediaList = [];
@@ -84,7 +84,11 @@
 
     function loadStudentMedia(studentClass) {
         fetch(`/get_media?class=${encodeURIComponent(studentClass || '')}`)
-            .then(res => res.json())
+            .then(async res => {
+                const data = await res.json();
+                if (!res.ok || !Array.isArray(data)) throw new Error('โหลดสื่อการเรียนไม่สำเร็จ');
+                return data;
+            })
             .then(videos => {
                 mediaList = videos || [];
                 const container = document.getElementById('mediaContainer');
@@ -140,26 +144,42 @@
                     `;
                     container.innerHTML += card;
 
-                    // โหลด YouTube Player แบบ API
-                    setTimeout(() => {
-                        if (window.YT && YT.Player && videoId) {
-                            players[v.id] = new YT.Player(iframeId, {
-                                height: '180',
-                                width: '100%',
-                                videoId: videoId,
-                                events: { 'onStateChange': (evt) => onPlayerStateChange(evt, v.id) }
-                            });
-                        }
-                    }, 500);
+
                 });
+
+                initializePlayers();
 
                 // อัปเดต Progress Bar รวม
                 const progress = Math.round((completedCount / mediaList.length) * 100);
                 document.getElementById('overallProgressBar').style.width = `${progress}%`;
                 document.getElementById('progressText').innerText = `ความคืบหน้าทั้งหมด: ${progress}%`;
                 document.getElementById('scoreOverview').innerText = `สำเร็จแล้ว: ${completedCount}/${mediaList.length} เรื่อง`;
+            }).catch(() => {
+                const container = document.getElementById('mediaContainer');
+                container.replaceChildren();
+                const message = document.createElement('p');
+                message.textContent = 'โหลดสื่อการเรียนไม่สำเร็จ กรุณาลองอีกครั้ง';
+                const retry = document.createElement('button');
+                retry.textContent = 'ลองใหม่';
+                retry.onclick = () => loadStudentMedia(userRoom);
+                container.append(message, retry);
             });
     }
+
+    function initializePlayers() {
+        if (!window.YT || !YT.Player) return;
+        mediaList.forEach((video, index) => {
+            const id = extractYoutubeId(video.url);
+            const elementId = `ytplayer_${video.id || index}`;
+            const element = document.getElementById(elementId);
+            if (!id || !element || element.tagName === 'IFRAME') return;
+            players[video.id] = new YT.Player(elementId, {
+                height: '180', width: '100%', videoId: id,
+                events: {onStateChange: event => onPlayerStateChange(event, video.id)}
+            });
+        });
+    }
+    window.onYouTubeIframeAPIReady = initializePlayers;
 
     // ตรวจจับเมื่อเล่นวิดีโอ
     function onPlayerStateChange(event, mediaId) {
