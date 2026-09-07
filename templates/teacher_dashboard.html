@@ -11,6 +11,8 @@
         .tab-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
         .tab-btn { padding: 12px 24px; font-size: 15px; font-weight: bold; color: #64748b; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; }
         .tab-btn.active { color: #007bff; border-bottom-color: #007bff; }
+        .tab-btn:disabled { color: #94a3b8; cursor: not-allowed; }
+        [hidden] { display: none !important; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -29,25 +31,28 @@
 
     <div class="card">
         <label><b>1. เลือกชั้นเรียน:</b></label>
-        <select id="classSelect" onchange="renderAttendanceTable()">
+        <select id="classSelect" onchange="selectClass()">
             <option value="">-- กรุณาเลือกชั้นเรียน --</option>
             {% for c in classes %}
                 <option value="{{ c }}">{{ c }}</option>
             {% endfor %}
         </select>
         <label style="margin-left:20px;"><b>2. วันที่:</b></label>
-        <input type="date" id="dateSelect" onchange="renderAttendanceTable()">
+        <input type="date" id="dateSelect" onchange="renderAttendanceTable()" disabled>
     </div>
+
+    <div id="classHint" class="card" role="status">กรุณาเลือกห้องเรียนก่อน เพื่อใช้ฟังก์ชันเช็คชื่อ นำเข้ารายชื่อ และสื่อการเรียน</div>
+    <p id="classContext" role="status" hidden></p>
 
     <!-- แถบเมนูแท็บ -->
     <div class="tab-container">
-        <button class="tab-btn active" onclick="switchTab('attendance', event)">📝 เช็คชื่อนักเรียน</button>
-        <button class="tab-btn" onclick="switchTab('import', event)">📥 นำเข้ารายชื่อ (Google Sheet)</button>
-        <button class="tab-btn" onclick="switchTab('media', event)">🎬 สื่อการเรียน (YouTube)</button>
+        <button class="tab-btn" disabled onclick="switchTab('attendance', event)">📝 เช็คชื่อนักเรียน</button>
+        <button class="tab-btn" disabled onclick="switchTab('import', event)">📥 นำเข้ารายชื่อ (Google Sheet)</button>
+        <button class="tab-btn" disabled onclick="switchTab('media', event)">🎬 สื่อการเรียน (YouTube)</button>
     </div>
 
     <!-- แท็บ 1: เช็คชื่อ -->
-    <div id="tab-attendance" class="tab-content active">
+    <div id="tab-attendance" class="tab-content">
         <div class="card">
             <h3>เช็คชื่อนักเรียน</h3>
             <table>
@@ -64,7 +69,7 @@
     <div id="tab-import" class="tab-content">
         <div class="card">
             <h3>📥 นำเข้ารายชื่อนักเรียนเข้า Neon DB</h3>
-            <p style="color:#666; font-size:14px;">วางลิงก์ Google Sheet ที่ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์" (ต้องมี Column: student_id, fullname, class)</p>
+            <p style="color:#666; font-size:14px;">วางลิงก์ Google Sheet ที่ตั้งค่าแชร์เป็น "ทุกคนที่มีลิงก์" (ต้องมี Column: student_id, fullname, class — นำเข้าเฉพาะแถวที่ class ตรงกับห้องที่เลือก)</p>
             <div style="display:flex; gap:10px;">
                 <input type="text" id="sheetUrlInput" placeholder="วางลิงก์ Google Sheet..." style="flex:1; padding:10px; border-radius:6px; border:1px solid #ccc;">
                 <button onclick="submitImportSheet()" style="background:#28a745; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">นำเข้าข้อมูล</button>
@@ -92,9 +97,41 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('dateSelect').valueAsDate = new Date();
+        document.getElementById('classSelect').value = '';
+        selectClass();
     });
 
+    function requireClass() {
+        if (document.getElementById('classSelect').value) return true;
+        Swal.fire('เลือกห้องเรียนก่อน', 'กรุณาเลือกห้องเรียนเพื่อใช้งานฟังก์ชันนี้', 'warning');
+        document.getElementById('classSelect').focus();
+        return false;
+    }
+
+    function selectClass() {
+        const selectedClass = document.getElementById('classSelect').value;
+        const ready = Boolean(selectedClass);
+        document.getElementById('dateSelect').disabled = !ready;
+        document.getElementById('classHint').hidden = ready;
+        const context = document.getElementById('classContext');
+        context.hidden = !ready;
+        context.textContent = `ห้องที่เลือก: ${selectedClass} — เลือกฟังก์ชันที่ต้องการใช้งาน`;
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.disabled = !ready;
+            el.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.classList.remove('active');
+            el.querySelectorAll('input, button, select').forEach(control => control.disabled = !ready);
+        });
+        ['sheetUrlInput', 'mediaSubject', 'mediaTitle', 'mediaUrl'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('importResult').textContent = '';
+        renderAttendanceTable();
+        if (ready) switchTab('attendance', {currentTarget: document.querySelector('.tab-btn')});
+    }
+
     function switchTab(tabName, event) {
+        if (!requireClass()) return;
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(`tab-${tabName}`).classList.add('active');
@@ -125,6 +162,7 @@
     }
 
     function saveAttendance() {
+        if (!requireClass()) return;
         const selectedDate = document.getElementById('dateSelect').value;
         const selectedClass = document.getElementById('classSelect').value;
         const rows = document.querySelectorAll('#studentTableBody tr');
@@ -143,10 +181,11 @@
             body: JSON.stringify({ date: selectedDate, class: selectedClass, records: records })
         })
         .then(res => res.json())
-        .then(data => Swal.fire('สำเร็จ', data.message, 'success'));
+        .then(data => Swal.fire(data.success ? 'สำเร็จ' : 'เกิดข้อผิดพลาด', data.message, data.success ? 'success' : 'error'));
     }
 
     function submitImportSheet() {
+        if (!requireClass()) return;
         const url = document.getElementById('sheetUrlInput').value;
         const resultDiv = document.getElementById('importResult');
         resultDiv.innerHTML = '⏳ กำลังนำเข้าข้อมูล...';
@@ -154,7 +193,7 @@
         fetch('/api/import_students_sheet', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ sheet_url: url })
+            body: JSON.stringify({ sheet_url: url, class: document.getElementById('classSelect').value })
         })
         .then(res => res.json())
         .then(data => {
@@ -168,6 +207,7 @@
     }
 
     function uploadMedia() {
+        if (!requireClass()) return;
         fetch('/save_media', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -179,7 +219,7 @@
             })
         })
         .then(res => res.json())
-        .then(data => Swal.fire('สำเร็จ', data.message, 'success'));
+        .then(data => Swal.fire(data.success ? 'สำเร็จ' : 'เกิดข้อผิดพลาด', data.message, data.success ? 'success' : 'error'));
     }
 </script>
 </body>
