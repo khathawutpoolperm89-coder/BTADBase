@@ -31,19 +31,20 @@ main{max-width:1180px;margin:auto;padding:36px 28px 60px}.eyebrow{font-size:11px
 <section id="classHint" class="empty"><div class="empty-symbol" aria-hidden="true">▦</div><h2>วันนี้จะดูแลห้องไหนดี?</h2><p class="muted">{% if classes %}เลือกห้องเรียนด้านบน แล้วเริ่มเช็คชื่อ นำเข้ารายชื่อ หรือเพิ่มสื่อการสอนได้เลย{% else %}ยังไม่มีห้องเรียนในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มห้องเรียนและรายชื่อนักเรียน{% endif %}</p></section>
 <section id="tab-attendance" class="tab-content panel" aria-label="เช็คชื่อนักเรียน"><div class="panel-head"><div><h2>เช็คชื่อนักเรียน</h2><p class="muted">ตรวจสอบสถานะให้ครบก่อนบันทึก</p></div><span id="studentCount" class="count">0 คน</span></div><div class="table-wrap"><table><thead><tr><th scope="col">ลำดับ</th><th scope="col">ชื่อ–นามสกุล</th><th scope="col">สถานะ</th></tr></thead><tbody id="studentTableBody"></tbody></table></div><div class="panel-footer"><p class="hint">รายการใหม่เริ่มที่ “มา” · กดบันทึกเมื่อเช็คชื่อครบแล้ว</p><button id="saveAttendanceBtn" class="primary" onclick="saveAttendance()">บันทึกการเช็คชื่อ</button></div></section>
 <section id="tab-import" class="tab-content panel" aria-label="นำเข้ารายชื่อ"><div class="panel-head"><div><h2>นำเข้ารายชื่อนักเรียน</h2><p class="muted">เพิ่มหรืออัปเดตรายชื่อจาก Google Sheets</p></div></div><form onsubmit="submitImportSheet(event)"><div class="panel-body"><div class="notice">ตั้งค่าการแชร์ Sheet เป็น “ทุกคนที่มีลิงก์” และเตรียมคอลัมน์ <code>student_id</code>, <code>fullname</code>, <code>class</code><br>ระบบจะนำเข้าเฉพาะแถวที่ class ตรงกับห้องที่เลือก</div><div class="field"><label for="sheetUrlInput">ลิงก์ Google Sheets</label><input type="url" id="sheetUrlInput" required placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"><span class="hint">รหัสนักเรียนเดิมจะได้รับการอัปเดตข้อมูล</span></div></div><div class="panel-footer"><p class="hint">ตรวจสอบห้องเรียนที่เลือกก่อนนำเข้า</p><button class="primary" type="submit">นำเข้ารายชื่อ</button></div></form></section>
-<section id="tab-media" class="tab-content panel" aria-label="สื่อการเรียน"><div class="panel-head"><div><h2>เพิ่มสื่อการเรียน</h2><p class="muted">ส่งต่อวิดีโอ YouTube ให้นักเรียนในห้องที่เลือก</p></div></div><form onsubmit="uploadMedia(event)"><div class="panel-body form-grid"><div class="field"><label for="mediaSubject">ชื่อวิชา</label><input id="mediaSubject" required placeholder="เช่น คณิตศาสตร์"></div><div class="field"><label for="mediaTitle">หัวข้อบทเรียน</label><input id="mediaTitle" required placeholder="เช่น สมการเชิงเส้น"></div><div class="field full"><label for="mediaUrl">ลิงก์วิดีโอ YouTube</label><input type="url" id="mediaUrl" required placeholder="https://www.youtube.com/watch?v=…" autocomplete="off"></div></div><div class="panel-footer"><p class="hint">สื่อนี้จะผูกกับห้องเรียนที่เลือกไว้</p><button class="primary" type="submit">บันทึกสื่อการเรียน</button></div></form></section>
+<section id="tab-media" class="tab-content panel" aria-label="สื่อการเรียน"><div class="panel-head"><div><h2 id="mediaFormHeading">เพิ่มสื่อการเรียน</h2><p class="muted">ส่งต่อวิดีโอ YouTube ให้นักเรียนในห้องที่เลือก</p></div></div><form id="mediaForm" onsubmit="uploadMedia(event)"><div class="panel-body form-grid"><div class="field"><label for="mediaSubject">ชื่อวิชา</label><input id="mediaSubject" required placeholder="เช่น คณิตศาสตร์"></div><div class="field"><label for="mediaTitle">หัวข้อบทเรียน</label><input id="mediaTitle" required placeholder="เช่น สมการเชิงเส้น"></div><div class="field full"><label for="mediaUrl">ลิงก์วิดีโอ YouTube</label><input type="url" id="mediaUrl" required placeholder="https://www.youtube.com/watch?v=…" autocomplete="off"></div></div><div class="panel-footer"><p class="hint">สื่อนี้จะผูกกับห้องเรียนที่เลือกไว้</p><button id="cancelMediaEdit" type="button" class="logout" hidden onclick="cancelMediaEdit()">ยกเลิกการแก้ไข</button><button id="mediaSaveBtn" class="primary" type="submit">บันทึกสื่อการเรียน</button></div></form><div class="panel-head"><div><h2>สื่อในห้องนี้</h2><p class="muted">แก้ไขรายละเอียดหรือลบสื่อที่ไม่ใช้แล้ว</p></div><button type="button" class="logout" onclick="loadTeacherMedia()">รีเฟรช</button></div><div id="teacherMediaList" class="panel-body" aria-live="polite"></div></section>
 <p class="footer-note">BTAD · ระบบดูแลการเรียนสำหรับอาจารย์</p>
 </main>
 <script>
 const allStudentsData = {{ all_students | tojson }};
 const $ = id => document.getElementById(id);
+let editingMediaId = null, mediaLoadVersion = 0;
 let currentClass = '', currentDate = '', dirty = false, busy = false, attendanceSaved = false;
 function notify(message, error=false) { $('feedback').textContent=message; $('feedback').className='feedback'+(error?' error':''); $('feedback').hidden=false; }
 function requireClass(){if(currentClass)return true;notify('กรุณาเลือกห้องเรียนก่อน',true);$('classSelect').focus();return false;}
 function confirmDiscard(){return !dirty || window.confirm('มีข้อมูลที่ยังไม่ได้บันทึก ต้องการเปลี่ยนห้องหรือวันที่และล้างข้อมูลหรือไม่?');}
 function selectClass(){
  if(busy || !confirmDiscard()){$('classSelect').value=currentClass;return;}
- currentClass=$('classSelect').value;dirty=false;attendanceSaved=false;
+ currentClass=$('classSelect').value;resetMediaEditor();loadTeacherMedia();dirty=false;attendanceSaved=false;
  $('dateSelect').disabled=!currentClass;$('classHint').hidden=!!currentClass;
  $('classContext').textContent=currentClass?'ห้อง '+currentClass:'เลือกห้องเรียนเพื่อเริ่มใช้งาน';
  $('feedback').hidden=true;
@@ -77,7 +78,48 @@ async function saveAttendance(){
  if(await send('/save_attendance',{date:$('dateSelect').value,class:currentClass,records},$('saveAttendanceBtn'))){attendanceSaved=true;$('saveAttendanceBtn').disabled=true;$('saveAttendanceBtn').textContent='บันทึกแล้ว';}
 }
 async function submitImportSheet(event){event.preventDefault();if(!requireClass()||busy)return;const button=event.submitter||event.target.querySelector('button');if(await send('/api/import_students_sheet',{sheet_url:$('sheetUrlInput').value.trim(),class:currentClass},button)){sessionStorage.setItem('teacherImportedClass',currentClass);dirty=false;location.reload();}}
-async function uploadMedia(event){event.preventDefault();if(!requireClass()||busy)return;const url=$('mediaUrl').value.trim();const hostname=new URL(url).hostname;if(!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(hostname)){notify('กรุณาใช้ลิงก์วิดีโอจาก YouTube',true);return;}if(await send('/save_media',{class_name:currentClass,subject:$('mediaSubject').value.trim(),title:$('mediaTitle').value.trim(),video_url:url},event.submitter||event.target.querySelector('button'))){event.target.reset();dirty=[...document.querySelectorAll('form input')].some(el=>el.value.trim());}}
+async function uploadMedia(event){event.preventDefault();if(!requireClass()||busy)return;const url=$('mediaUrl').value.trim();const hostname=new URL(url).hostname;if(!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(hostname)){notify('กรุณาใช้ลิงก์วิดีโอจาก YouTube',true);return;}if(await send(editingMediaId ? '/api/teacher/media/'+editingMediaId : '/save_media',{action:'update',class_name:currentClass,subject:$('mediaSubject').value.trim(),title:$('mediaTitle').value.trim(),video_url:url},event.submitter||event.target.querySelector('button'))){resetMediaEditor();loadTeacherMedia();dirty=[...document.querySelectorAll('form input')].some(el=>el.value.trim());}}
+function resetMediaEditor(){
+ editingMediaId=null;$('mediaForm').reset();$('mediaFormHeading').textContent='เพิ่มสื่อการเรียน';
+ $('mediaSaveBtn').textContent='บันทึกสื่อการเรียน';$('cancelMediaEdit').hidden=true;
+}
+function cancelMediaEdit(){if(busy)return;if(dirty&&!window.confirm('ยกเลิกข้อมูลที่ยังไม่ได้บันทึกหรือไม่?'))return;resetMediaEditor();dirty=false;}
+function editTeacherMedia(media){
+ if(busy)return;if(dirty&&!window.confirm('มีข้อมูลยังไม่ได้บันทึก ต้องการเปลี่ยนไปแก้ไขสื่อนี้หรือไม่?'))return;
+ editingMediaId=media.id;$('mediaSubject').value=media.subject;$('mediaTitle').value=media.title;$('mediaUrl').value=media.url;
+ $('mediaFormHeading').textContent='แก้ไขสื่อการเรียน';$('mediaSaveBtn').textContent='บันทึกการแก้ไข';$('cancelMediaEdit').hidden=false;
+ dirty=false;$('mediaSubject').focus();$('mediaForm').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function deleteTeacherMedia(media,button){
+ if(busy)return;
+ if(!window.confirm('ต้องการลบสื่อ “'+media.title+'” ของห้อง '+currentClass+' หรือไม่? การลบไม่สามารถย้อนกลับได้'))return;
+ if(await send('/api/teacher/media/'+media.id,{action:'delete',class_name:currentClass},button)){
+  if(editingMediaId===media.id)resetMediaEditor();await loadTeacherMedia();
+ }
+}
+async function loadTeacherMedia(){
+ const version=++mediaLoadVersion, room=currentClass, list=$('teacherMediaList');
+ list.replaceChildren();if(!room)return;list.textContent='กำลังโหลดสื่อ…';
+ try{
+  const response=await fetch('/api/teacher/media?class='+encodeURIComponent(room));const data=await response.json();
+  if(version!==mediaLoadVersion)return;
+  if(!response.ok||!data.success)throw new Error(data.message||'โหลดสื่อไม่สำเร็จ');
+  list.replaceChildren();
+  if(!data.media.length){list.textContent='ยังไม่มีสื่อในห้องนี้ เพิ่มสื่อได้จากแบบฟอร์มด้านบน';return;}
+  data.media.forEach(media=>{
+   const item=document.createElement('div');item.style.cssText='padding:16px 0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center';
+   const details=document.createElement('div');details.style.cssText='flex:1;min-width:180px;overflow-wrap:anywhere';
+   const title=document.createElement('strong');title.textContent=media.title;
+   const subject=document.createElement('p');subject.className='muted';subject.textContent=media.subject;
+   const link=document.createElement('a');link.textContent='เปิดวิดีโอ ↗';link.target='_blank';link.rel='noopener noreferrer';
+   try{const url=new URL(media.url);if(['https:','http:'].includes(url.protocol))link.href=url.href;}catch{}
+   details.append(title,subject,link);
+   const edit=document.createElement('button');edit.className='logout';edit.textContent='แก้ไข';edit.onclick=()=>editTeacherMedia(media);
+   const remove=document.createElement('button');remove.className='logout';remove.style.color='#a73530';remove.textContent='ลบ';remove.onclick=()=>deleteTeacherMedia(media,remove);
+   item.append(details,edit,remove);list.append(item);
+  });
+ }catch(error){if(version!==mediaLoadVersion)return;list.textContent='โหลดรายการสื่อไม่สำเร็จ กรุณากดรีเฟรชเพื่อลองใหม่';}
+}
 document.addEventListener('DOMContentLoaded',()=>{const now=new Date();currentDate=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');$('dateSelect').value=currentDate;$('classSelect').value='';selectClass();document.querySelectorAll('form input').forEach(el=>el.addEventListener('input',()=>dirty=true));const imported=sessionStorage.getItem('teacherImportedClass');if(imported){sessionStorage.removeItem('teacherImportedClass');$('classSelect').value=imported;selectClass();notify('นำเข้ารายชื่อเรียบร้อยแล้ว');}});
 window.addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
 </script>
