@@ -280,6 +280,60 @@ def get_media():
         if conn: conn.close()
         return jsonify({'success': False, 'message': 'โหลดสื่อการเรียนไม่สำเร็จ กรุณาลองใหม่'}), 500
     
+@app.route('/api/teacher/media', methods=['GET'])
+def teacher_media_list():
+    if session.get('role') != 'teacher':
+        return jsonify({'success': False, 'message': 'เฉพาะอาจารย์เท่านั้น'}), 403
+    room = request.args.get('class', '').strip()
+    if not room:
+        return jsonify({'success': False, 'message': 'กรุณาเลือกห้องเรียน'}), 400
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id, class, subject, title, url FROM media WHERE class = %s ORDER BY id DESC', (room,))
+            return jsonify({'success': True, 'media': cur.fetchall()})
+    finally:
+        conn.close()
+
+
+@app.route('/api/teacher/media/<int:media_id>', methods=['POST'])
+def teacher_media_manage(media_id):
+    if session.get('role') != 'teacher':
+        return jsonify({'success': False, 'message': 'เฉพาะอาจารย์เท่านั้น'}), 403
+    data = request.get_json(silent=True) or {}
+    room = str(data.get('class_name') or '').strip()
+    action = data.get('action')
+    if not room or action not in ('update', 'delete'):
+        return jsonify({'success': False, 'message': 'กรุณาเลือกห้องและรายการที่ต้องการ'}), 400
+    subject = str(data.get('subject') or '').strip()
+    title = str(data.get('title') or '').strip()
+    url = str(data.get('video_url') or '').strip()
+    if action == 'update' and not all((subject, title, url)):
+        return jsonify({'success': False, 'message': 'กรุณากรอกชื่อวิชา หัวข้อ และลิงก์ให้ครบ'}), 400
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            if action == 'delete':
+                cur.execute('DELETE FROM media WHERE id = %s AND class = %s RETURNING id', (media_id, room))
+            else:
+                cur.execute('UPDATE media SET subject = %s, title = %s, url = %s WHERE id = %s AND class = %s RETURNING id',
+                            (subject, title, url, media_id, room))
+            if not cur.fetchone():
+                conn.rollback()
+                return jsonify({'success': False, 'message': 'ไม่พบสื่อในห้องนี้ อาจถูกลบไปแล้ว'}), 404
+        conn.commit()
+        return jsonify({'success': True, 'message': 'ลบสื่อเรียบร้อยแล้ว' if action == 'delete' else 'แก้ไขสื่อเรียบร้อยแล้ว'})
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        return jsonify({'success': False, 'message': 'สื่อนี้มีข้อมูลที่เชื่อมโยงอยู่ จึงยังลบไม่ได้'}), 409
+    except Exception:
+        conn.rollback()
+        app.logger.exception('Unable to manage teaching media')
+        return jsonify({'success': False, 'message': 'บันทึกไม่สำเร็จ กรุณาลองใหม่'}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/save_media', methods=['POST'])
 def save_media():
     data = request.json or {}
