@@ -108,6 +108,11 @@
 
     <!-- 2. ฟอร์มสำหรับนักเรียน -->
     <div id="studentForm">
+        {% if line_login_enabled() %}
+        <a href="/auth/line" style="display:block;background:#06c755;color:white;text-decoration:none;padding:14px;border-radius:9px;font-weight:bold;">เข้าสู่ระบบด้วย LINE</a>
+        <p style="font-size:13px;color:#617568;">ครั้งแรกกรอกเลขประจำตัวนักเรียนเพื่อผูกบัญชี</p>
+        <p style="font-size:12px;color:#778;">หรือเข้าสู่ระบบแบบเดิม</p>
+        {% endif %}
         <h3 style="margin-top:0; color:#007bff;">เข้าสู่ระบบนักเรียน</h3>
         <label for="classSelect">1. เลือกชั้นเรียน:</label>
         <select id="classSelect" onchange="loadStudentsByClass()">

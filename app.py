@@ -9,13 +9,18 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_key_student_app'
+app.secret_key = os.environ.get('SECRET_KEY') or __import__('secrets').token_hex(32)
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
+                  SESSION_COOKIE_SECURE=bool(os.environ.get('RENDER')))
 
 # 🐘 ดึง Connection String ของ Neon จาก Environment Variable
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+from line_auth import install_line_login
+install_line_login(app, get_db)
 
 # ---------------------------------------------------------
 # 🟢 1. ระบบ Login & หน้าหลัก
