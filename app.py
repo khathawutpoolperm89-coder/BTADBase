@@ -11,7 +11,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY') or __import__('secrets').token_hex(32)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
-                  SESSION_COOKIE_SECURE=bool(os.environ.get('RENDER')))
+                  SESSION_COOKIE_SECURE=bool(os.environ.get('RENDER') or os.environ.get('VERCEL')))
 
 # 🐘 ดึง Connection String ของ Neon จาก Environment Variable
 DATABASE_URL = os.environ.get('DATABASE_URL')
